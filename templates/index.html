@@ -65,6 +65,8 @@
                         <thead>
                             <tr>
                                 <th>ID</th>
+                                <th>Sección</th>
+                                <th>Tipo</th>
                                 <th>Examen</th>
                                 <th>Hoja de Respuestas</th>
                                 <th>Plantilla de Calificación</th>
@@ -75,6 +77,8 @@
                             {% for variante in variantes %}
                             <tr>
                                 <td>{{ variante.id }}</td>
+                                <td>{{ variante.seccion }}</td>
+                                <td>{{ variante.tipo_evaluacion }}</td>
                                 <td>
                                     {% if variante.tiene_examen %}
                                     <a href="{{ url_for('descargar_archivo', tipo='examen', filename='Examen_' + variante.id + '.docx') }}" class="btn btn-sm btn-primary">
@@ -121,6 +125,11 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-3">
+                    <a href="{{ url_for('mostrar_historial') }}" class="btn btn-info">
+                        <i class="fas fa-history me-1"></i>Ver Historial Completo
+                    </a>
                 </div>
             </div>
         </div>

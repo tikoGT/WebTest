@@ -2,24 +2,25 @@
   "id": "V2",
   "primera_serie": [
     {
-      "pregunta": "Es el conjunto de todos los elementos a los que se somete a un estudio estadístico.",
+      "pregunta": "Método que sirve para medir la desigualdad, es un número entre cero y uno que mide el grado de desigualdad en la distribución del ingreso en una sociedad determinada o país.",
       "opciones": [
-        "Muestra",
-        "Población",
-        "Individuo",
-        "Muestreo"
+        "Coeficiente de Correlación",
+        "Coeficiente de Gini",
+        "Marca de Clase",
+        "La Frecuencia Acumulada"
       ],
       "respuesta_correcta": 1
     },
     {
-      "pregunta": "Si los datos están distribuidos de forma simétrica alrededor de la media, entonces:",
+      "pregunta": "Las Variables Estadísticas pueden ser:",
       "opciones": [
-        "La media y la mediana coinciden",
-        "La media es mayor que la mediana",
-        "La mediana es mayor que la media",
-        "La media y la moda coinciden"
+        "Discretas",
+        "Cualitativas",
+        "Indiscretas",
+        "Cuantitativas",
+        "Numéricas"
       ],
-      "respuesta_correcta": 0
+      "respuesta_correcta": 1
     },
     {
       "pregunta": "La diferencia entre una variable cuantitativa discreta y una variable cuantitativa continua es:",
@@ -30,16 +31,6 @@
         "No hay diferencia real entre ambas"
       ],
       "respuesta_correcta": 1
-    },
-    {
-      "pregunta": "¿Cuál de las siguientes medidas de tendencia central se ve más afectada por valores extremos?",
-      "opciones": [
-        "Media",
-        "Mediana",
-        "Moda",
-        "Rango"
-      ],
-      "respuesta_correcta": 0
     },
     {
       "pregunta": "Las Fases de un estudio estadístico son:",
@@ -54,14 +45,25 @@
       "respuesta_correcta": 0
     },
     {
-      "pregunta": "Método que sirve para medir la desigualdad, es un número entre cero y uno que mide el grado de desigualdad en la distribución del ingreso en una sociedad determinada o país.",
+      "pregunta": "Si los datos están distribuidos de forma simétrica alrededor de la media, entonces:",
       "opciones": [
-        "Coeficiente de Correlación",
-        "Coeficiente de Gini",
-        "Marca de Clase",
-        "La Frecuencia Acumulada"
+        "La media y la mediana coinciden",
+        "La media es mayor que la mediana",
+        "La mediana es mayor que la media",
+        "La media y la moda coinciden"
       ],
-      "respuesta_correcta": 1
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "Trata del recuento, ordenación y clasificación de los datos obtenidos por las observaciones, para poder hacer comparaciones y obtener conclusiones.",
+      "opciones": [
+        "Población",
+        "Cálculos",
+        "Estadística",
+        "Frecuencia",
+        "Ninguna de las anteriores"
+      ],
+      "respuesta_correcta": 2
     },
     {
       "pregunta": "El tipo de gráfico más adecuado para mostrar la distribución de frecuencias de una variable continua es:",
@@ -74,14 +76,24 @@
       "respuesta_correcta": 2
     },
     {
-      "pregunta": "¿Qué medida indica el grado de dispersión de los datos respecto a la media?",
+      "pregunta": "Es el conjunto de todos los elementos a los que se somete a un estudio estadístico.",
       "opciones": [
-        "Varianza",
-        "Mediana",
-        "Moda",
-        "Coeficiente de asimetría"
+        "Muestra",
+        "Población",
+        "Individuo",
+        "Muestreo"
       ],
-      "respuesta_correcta": 0
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "¿Cuál es el método que permite calcular el número de grupos, intervalos o clases a construer para una table de distribución de frecuencias?",
+      "opciones": [
+        "Método de mínimos cuadrados",
+        "Coeficiente de Gini",
+        "Método Sturgers",
+        "La regla empírica"
+      ],
+      "respuesta_correcta": 2
     },
     {
       "pregunta": "La toma de temperatura para ingresar a los centros comerciales es una variable:",
@@ -90,22 +102,11 @@
         "Cuantitativa"
       ],
       "respuesta_correcta": 1
-    },
-    {
-      "pregunta": "Las Variables Estadísticas pueden ser:",
-      "opciones": [
-        "Discretas",
-        "Cualitativas",
-        "Indiscretas",
-        "Cuantitativas",
-        "Numéricas"
-      ],
-      "respuesta_correcta": 1
     }
   ],
   "segunda_serie": [
     {
-      "escenario": "Un estudio sobre calificaciones finales en un curso de estadística muestra datos que podrían seguir una distribución normal. Los investigadores quieren representar las frecuencias de cada intervalo de calificación y, al mismo tiempo, identificar visualmente si la distribución se aproxima a una curva normal.",
+      "escenario": "Un instituto de estadísticas demográficas ha recopilado información sobre las edades de los habitantes de un municipio, agrupando los datos en intervalos de 10 años (0-9, 10-19, 20-29, etc.). Desean visualizar tanto la frecuencia de cada intervalo como la tendencia general de la distribución de edades.",
       "opciones": [
         "Gráfica de barras",
         "Gráfica circular (pastel)",
@@ -113,7 +114,7 @@
         "Ojiva de Galton",
         "Polígono de frecuencias"
       ],
-      "respuesta_correcta": 2
+      "respuesta_correcta": 4
     },
     {
       "escenario": "Una empresa farmacéutica ha registrado el tiempo (en días) que tarda cada lote de medicamentos en pasar el control de calidad. Quieren determinar si un nuevo lote con un tiempo específico está dentro del 75% de los casos más rápidos.",
@@ -138,6 +139,17 @@
       "respuesta_correcta": 3
     },
     {
+      "escenario": "Un estudio sobre calificaciones finales en un curso de estadística muestra datos que podrían seguir una distribución normal. Los investigadores quieren representar las frecuencias de cada intervalo de calificación y, al mismo tiempo, identificar visualmente si la distribución se aproxima a una curva normal.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
       "escenario": "Una compañía de telecomunicaciones quiere representar visualmente la distribución porcentual de sus ingresos por tipo de servicio (internet, telefonía fija, telefonía móvil, televisión por cable y servicios corporativos) durante el año fiscal 2023.",
       "opciones": [
         "Gráfica de barras",
@@ -149,7 +161,7 @@
       "respuesta_correcta": 1
     },
     {
-      "escenario": "Un departamento de recursos humanos ha realizado una encuesta sobre los tiempos de transporte (en minutos) que los empleados tardan en llegar a la oficina. Los datos obtenidos son continuos y quieren mostrar cómo se distribuyen estos tiempos, identificando claramente dónde se concentra la mayoría de los casos.",
+      "escenario": "Una universidad desea representar el número de estudiantes matriculados en cada una de sus facultades (Humanidades, Ingeniería, Medicina, Derecho, Economía y Arquitectura) para el ciclo académico 2024, permitiendo una fácil comparación entre facultades.",
       "opciones": [
         "Gráfica de barras",
         "Gráfica circular (pastel)",
@@ -157,122 +169,111 @@
         "Ojiva de Galton",
         "Polígono de frecuencias"
       ],
-      "respuesta_correcta": 2
-    },
-    {
-      "escenario": "Un análisis de ventas mensuales de una cadena de tiendas durante un año completo. Se desea mostrar la evolución de las ventas a lo largo del tiempo, identificando tendencias, picos y caídas.",
-      "opciones": [
-        "Gráfica de barras",
-        "Gráfica circular (pastel)",
-        "Histograma de Pearson",
-        "Ojiva de Galton",
-        "Polígono de frecuencias"
-      ],
-      "respuesta_correcta": 4
+      "respuesta_correcta": 0
     }
   ],
   "tercera_serie": [
     {
-      "title": "La siguiente tabla muestra la distribución de salarios mensuales (en quetzales) de los trabajadores de la empresa XYZ S.A:",
+      "title": "La siguiente tabla muestra la distribución de salarios mensuales (en quetzales) de los trabajadores de la empresa Alfa Omega S.A:",
       "ranges": [
-        "[1200-1800)",
-        "[1800-2400)",
-        "[2400-3000)",
-        "[3000-3600)",
-        "[3600-4200)",
-        "[4200-4800)",
-        "[4800-5400)",
-        "[5400-6000)"
-      ],
-      "workers": [
-        14,
-        6,
-        6,
-        5,
-        2,
-        2,
-        3,
-        7
-      ]
-    },
-    {
-      "title": "Construya la siguiente tabla de distribución de frecuencias. Con datos agrupados usando el método Sturgers.",
-      "data": [
-        "93",
-        "98",
-        "99",
-        "108",
-        "109",
-        "112",
-        "110",
-        "110",
-        "117",
-        "121",
-        "123",
-        "125",
-        "126",
-        "125",
-        "127",
-        "130",
-        "134",
-        "139",
-        "141",
-        "140",
-        "145",
-        "151",
-        "147",
-        "152",
-        "155"
-      ]
-    },
-    {
-      "title": "Con la información obtenida del tiempo de atención (en minutos) a clientes en una sucursal bancaria, se tomaron aleatoriamente los siguientes datos durante el mes de febrero.",
-      "data": [
-        "3.3",
-        "4.0",
-        "4.1",
-        "4.7",
-        "4.8",
-        "5.1",
-        "5.2",
-        "5.9",
-        "5.9",
-        "6.2",
-        "6.5",
-        "6.7",
-        "7.0",
-        "7.3",
-        "7.6",
-        "7.6",
-        "8.1",
-        "8.2",
-        "8.4",
-        "8.8",
-        "9.1",
-        "9.5",
-        "10.2",
-        "11.6"
-      ]
-    },
-    {
-      "title": "Calcular las medidas de tendencia central Media , Mediana, Moda e interprete los resultados obtenidos.",
-      "ranges": [
-        "[1500-2000)",
         "[2000-2500)",
         "[2500-3000)",
         "[3000-3500)",
         "[3500-4000)",
         "[4000-4500)",
-        "[4500-5000)"
+        "[4500-5000)",
+        "[5000-5500)",
+        "[5500-6000)"
+      ],
+      "workers": [
+        9,
+        12,
+        13,
+        14,
+        13,
+        12,
+        8,
+        6
+      ]
+    },
+    {
+      "title": "Construya la siguiente tabla de distribución de frecuencias. Con datos agrupados usando el método Sturgers.",
+      "data": [
+        "115",
+        "108",
+        "118",
+        "116",
+        "118",
+        "123",
+        "121",
+        "116",
+        "122",
+        "123",
+        "123",
+        "130",
+        "132",
+        "127",
+        "138",
+        "143",
+        "138",
+        "142",
+        "142",
+        "144",
+        "147",
+        "149",
+        "150",
+        "152",
+        "159"
+      ]
+    },
+    {
+      "title": "Con la información obtenida de las ventas mensuales de distintos productos tecnológicos, se tomaron aleatoriamente los siguientes datos que representan el crecimiento porcentual respecto al año anterior.",
+      "data": [
+        "2.2",
+        "3.0",
+        "2.5",
+        "3.2",
+        "2.7",
+        "3.3",
+        "4.1",
+        "3.4",
+        "3.9",
+        "4.0",
+        "4.7",
+        "4.6",
+        "5.0",
+        "4.6",
+        "4.9",
+        "5.5",
+        "5.9",
+        "6.3",
+        "6.3",
+        "7.2",
+        "7.3",
+        "8.3",
+        "9.3",
+        "10.7"
+      ]
+    },
+    {
+      "title": "Calcular las medidas de tendencia central Media , Mediana, Moda e interprete los resultados obtenidos.",
+      "ranges": [
+        "[1800-2300)",
+        "[2300-2800)",
+        "[2800-3300)",
+        "[3300-3800)",
+        "[3800-4300)",
+        "[4300-4800)",
+        "[4800-5300)"
       ],
       "count": [
-        3,
+        5,
         13,
-        18,
-        27,
-        13,
-        7,
-        5
+        20,
+        21,
+        16,
+        4,
+        1
       ]
     }
   ]

@@ -2,12 +2,76 @@
   "id": "V1",
   "primera_serie": [
     {
-      "pregunta": "La diferencia entre una variable cuantitativa discreta y una variable cuantitativa continua es:",
+      "pregunta": "¿Es un conjunto representativo de la población de referencia, el número de individuos es menor que el de la población?",
       "opciones": [
-        "Las variables discretas toman cualquier valor dentro de un intervalo, las continuas toman valores aislados",
-        "Las variables discretas toman valores aislados, las continuas toman cualquier valor dentro de un intervalo",
-        "Las variables discretas son siempre enteras, las continuas son siempre decimales",
-        "No hay diferencia real entre ambas"
+        "Valor",
+        "Dato",
+        "Experimento",
+        "Población",
+        "Muestra",
+        "Todas las anteriores"
+      ],
+      "respuesta_correcta": 4
+    },
+    {
+      "pregunta": "Si los datos están distribuidos de forma simétrica alrededor de la media, entonces:",
+      "opciones": [
+        "La media y la mediana coinciden",
+        "La media es mayor que la mediana",
+        "La mediana es mayor que la media",
+        "La media y la moda coinciden"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "El tipo de gráfico más adecuado para mostrar la distribución de frecuencias de una variable continua es:",
+      "opciones": [
+        "Gráfico de barras",
+        "Gráfico circular",
+        "Histograma",
+        "Gráfico de líneas"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "pregunta": "¿Quién ordeno o realizo el primer catastro o Censo de (bienes inmuebles) considerado el primero en Europa?",
+      "opciones": [
+        "El Rey Juan Carlos",
+        "El Rey Guillermo",
+        "El Rey Constantino",
+        "El Rey Ricardo",
+        "El Rey Federico de Edimburgo"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "¿Cuál de las siguientes medidas de tendencia central se ve más afectada por valores extremos?",
+      "opciones": [
+        "Media",
+        "Mediana",
+        "Moda",
+        "Rango"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "Método que sirve para medir la desigualdad, es un número entre cero y uno que mide el grado de desigualdad en la distribución del ingreso en una sociedad determinada o país.",
+      "opciones": [
+        "Coeficiente de Correlación",
+        "Coeficiente de Gini",
+        "Marca de Clase",
+        "La Frecuencia Acumulada"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "Las Variables Estadísticas pueden ser:",
+      "opciones": [
+        "Discretas",
+        "Cualitativas",
+        "Indiscretas",
+        "Cuantitativas",
+        "Numéricas"
       ],
       "respuesta_correcta": 1
     },
@@ -22,79 +86,12 @@
       "respuesta_correcta": 1
     },
     {
-      "pregunta": "Método que sirve para medir la desigualdad, es un número entre cero y uno que mide el grado de desigualdad en la distribución del ingreso en una sociedad determinada o país.",
+      "pregunta": "La toma de temperatura para ingresar a los centros comerciales es una variable:",
       "opciones": [
-        "Coeficiente de Correlación",
-        "Coeficiente de Gini",
-        "Marca de Clase",
-        "La Frecuencia Acumulada"
+        "Cualitativa",
+        "Cuantitativa"
       ],
       "respuesta_correcta": 1
-    },
-    {
-      "pregunta": "¿Quién ordeno o realizo el primer catastro o Censo de (bienes inmuebles) considerado el primero en Europa?",
-      "opciones": [
-        "El Rey Juan Carlos",
-        "El Rey Guillermo",
-        "El Rey Constantino",
-        "El Rey Ricardo",
-        "El Rey Federico de Edimburgo"
-      ],
-      "respuesta_correcta": 1
-    },
-    {
-      "pregunta": "Las Fases de un estudio estadístico son:",
-      "opciones": [
-        "Planteamiento del Problema",
-        "Simplificar los Datos",
-        "Recolectar y Ordenar los Datos",
-        "Analizar los Datos",
-        "Interpretar y Presentar Resultados",
-        "Ninguna de las anteriores"
-      ],
-      "respuesta_correcta": 0
-    },
-    {
-      "pregunta": "Las Variables Estadísticas pueden ser:",
-      "opciones": [
-        "Discretas",
-        "Cualitativas",
-        "Indiscretas",
-        "Cuantitativas",
-        "Numéricas"
-      ],
-      "respuesta_correcta": 1
-    },
-    {
-      "pregunta": "El tipo de gráfico más adecuado para mostrar la distribución de frecuencias de una variable continua es:",
-      "opciones": [
-        "Gráfico de barras",
-        "Gráfico circular",
-        "Histograma",
-        "Gráfico de líneas"
-      ],
-      "respuesta_correcta": 2
-    },
-    {
-      "pregunta": "¿Cuál de las siguientes medidas de tendencia central se ve más afectada por valores extremos?",
-      "opciones": [
-        "Media",
-        "Mediana",
-        "Moda",
-        "Rango"
-      ],
-      "respuesta_correcta": 0
-    },
-    {
-      "pregunta": "Trata del recuento, ordenación y clasificación de los datos obtenidos por las observaciones, para poder hacer comparaciones y obtener conclusiones.",
-      "opciones": [
-        "Población",
-        "Cálculos",
-        "Estadística",
-        "Frecuencia",
-        "Ninguna de las anteriores"
-      ],
-      "respuesta_correcta": 2
     },
     {
       "pregunta": "¿Qué medida indica el grado de dispersión de los datos respecto a la media?",
@@ -120,6 +117,28 @@
       "respuesta_correcta": 0
     },
     {
+      "escenario": "Una entidad financiera ha recopilado datos sobre los montos de créditos otorgados en el último trimestre. Los montos se han agrupado en intervalos y se desea mostrar los valores acumulados hasta cierto punto, para identificar qué porcentaje de créditos está por debajo de determinados montos.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 3
+    },
+    {
+      "escenario": "Un instituto de estadísticas demográficas ha recopilado información sobre las edades de los habitantes de un municipio, agrupando los datos en intervalos de 10 años (0-9, 10-19, 20-29, etc.). Desean visualizar tanto la frecuencia de cada intervalo como la tendencia general de la distribución de edades.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 4
+    },
+    {
       "escenario": "Un estudio sobre calificaciones finales en un curso de estadística muestra datos que podrían seguir una distribución normal. Los investigadores quieren representar las frecuencias de cada intervalo de calificación y, al mismo tiempo, identificar visualmente si la distribución se aproxima a una curva normal.",
       "opciones": [
         "Gráfica de barras",
@@ -142,17 +161,6 @@
       "respuesta_correcta": 2
     },
     {
-      "escenario": "Un instituto de estadísticas demográficas ha recopilado información sobre las edades de los habitantes de un municipio, agrupando los datos en intervalos de 10 años (0-9, 10-19, 20-29, etc.). Desean visualizar tanto la frecuencia de cada intervalo como la tendencia general de la distribución de edades.",
-      "opciones": [
-        "Gráfica de barras",
-        "Gráfica circular (pastel)",
-        "Histograma de Pearson",
-        "Ojiva de Galton",
-        "Polígono de frecuencias"
-      ],
-      "respuesta_correcta": 4
-    },
-    {
       "escenario": "Una compañía de telecomunicaciones quiere representar visualmente la distribución porcentual de sus ingresos por tipo de servicio (internet, telefonía fija, telefonía móvil, televisión por cable y servicios corporativos) durante el año fiscal 2023.",
       "opciones": [
         "Gráfica de barras",
@@ -162,17 +170,6 @@
         "Polígono de frecuencias"
       ],
       "respuesta_correcta": 1
-    },
-    {
-      "escenario": "Una empresa farmacéutica ha registrado el tiempo (en días) que tarda cada lote de medicamentos en pasar el control de calidad. Quieren determinar si un nuevo lote con un tiempo específico está dentro del 75% de los casos más rápidos.",
-      "opciones": [
-        "Gráfica de barras",
-        "Gráfica circular (pastel)",
-        "Histograma de Pearson",
-        "Ojiva de Galton",
-        "Polígono de frecuencias"
-      ],
-      "respuesta_correcta": 3
     }
   ],
   "tercera_serie": [
@@ -189,73 +186,73 @@
         "[5500-6000)"
       ],
       "workers": [
+        8,
+        9,
+        12,
+        16,
+        10,
         9,
         8,
-        10,
-        13,
-        12,
-        11,
-        9,
         5
       ]
     },
     {
       "title": "Construya la siguiente tabla de distribución de frecuencias. Con datos agrupados usando el método Sturgers.",
       "data": [
-        "92",
+        "95",
         "96",
         "105",
-        "106",
+        "105",
         "110",
-        "107",
-        "111",
-        "113",
+        "109",
         "112",
+        "113",
+        "116",
+        "118",
+        "123",
         "121",
-        "121",
-        "121",
-        "122",
+        "125",
+        "125",
         "129",
         "132",
-        "132",
+        "133",
         "134",
-        "139",
-        "143",
-        "145",
-        "143",
-        "150",
-        "151",
-        "149",
-        "156"
+        "138",
+        "142",
+        "147",
+        "147",
+        "153",
+        "154",
+        "153"
       ]
     },
     {
-      "title": "Con la información obtenida de las ventas mensuales de distintos productos tecnológicos, se tomaron aleatoriamente los siguientes datos que representan el crecimiento porcentual respecto al año anterior.",
+      "title": "Con la información obtenida del consumo de combustible (en km/litro) de vehículos en una empresa de transporte, se tomaron aleatoriamente los siguientes datos.",
       "data": [
-        "2.3",
-        "2.6",
-        "2.4",
-        "3.1",
-        "3.0",
-        "3.4",
-        "4.2",
-        "3.4",
-        "3.7",
-        "4.1",
-        "4.7",
-        "4.3",
-        "5.1",
-        "4.8",
-        "5.1",
-        "5.7",
-        "6.2",
-        "6.2",
-        "6.5",
-        "7.1",
-        "7.1",
         "8.3",
-        "9.3",
-        "10.6"
+        "8.5",
+        "8.8",
+        "8.9",
+        "9.1",
+        "9.6",
+        "9.9",
+        "10.1",
+        "10.6",
+        "10.6",
+        "11.1",
+        "11.5",
+        "11.6",
+        "11.8",
+        "12.0",
+        "12.6",
+        "12.7",
+        "12.9",
+        "13.3",
+        "13.7",
+        "13.8",
+        "14.6",
+        "15.2",
+        "16.7"
       ]
     },
     {
@@ -271,12 +268,12 @@
       ],
       "count": [
         5,
-        14,
+        11,
         19,
-        18,
+        22,
         15,
-        7,
-        3
+        6,
+        1
       ]
     }
   ]

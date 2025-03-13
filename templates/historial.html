@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Evaluaciones{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history me-2"></i>Historial de Evaluaciones Generadas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if historial %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Sección</th>
+                                <th>Tipo de Evaluación</th>
+                                <th>Variante</th>
+                                <th>Examen</th>
+                                <th>Hoja de Respuestas</th>
+                                <th>Plantilla</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in historial|sort(attribute='fecha_generacion', reverse=true) %}
+                            <tr>
+                                <td>{{ item.fecha_generacion }}</td>
+                                <td>{{ item.seccion }}</td>
+                                <td>{{ item.tipo_texto }}</td>
+                                <td>{{ item.id }}</td>
+                                <td>
+                                    <a href="{{ url_for('descargar_archivo', tipo='examen', filename=item.examen) }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-download me-1"></i>Descargar
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('descargar_archivo', tipo='hoja', filename=item.hoja) }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-download me-1"></i>Descargar
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename=item.plantilla) }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-download me-1"></i>Descargar
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('previsualizar', variante_id=item.id) }}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-eye me-1"></i>Vista Previa
+                                        </a>
+                                        <a href="{{ url_for('descargar_todo', id_examen=item.id) }}" class="btn btn-sm btn-secondary">
+                                            <i class="fas fa-download me-1"></i>Todo
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <p><i class="fas fa-info-circle me-2"></i>No hay evaluaciones en el historial. Empieza generando nuevos exámenes.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -39,6 +39,25 @@ EXAMENES_ESCANEADOS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file
 if not os.path.exists(EXAMENES_ESCANEADOS_FOLDER):
     os.makedirs(EXAMENES_ESCANEADOS_FOLDER)
 
+# Añadir al principio del archivo, después de la definición de carpetas
+HISTORIAL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'historial.json')
+
+# Función para cargar el historial
+def cargar_historial():
+    if os.path.exists(HISTORIAL_FILE):
+        try:
+            with open(HISTORIAL_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
+
+# Función para guardar el historial
+def guardar_historial(historial):
+    with open(HISTORIAL_FILE, 'w', encoding='utf-8') as f:
+        json.dump(historial, f, indent=2, ensure_ascii=False)
+
+
 # Márgenes de error aceptables para calificación
 MARGENES_ERROR = {
     'gini': 0.05,               # ±5% para coeficiente de Gini
@@ -1758,20 +1777,68 @@ def calcular_puntuacion(respuestas_alumno, respuestas_correctas):
 # Rutas de la aplicación
 @app.route('/')
 def index():
-    # Listar variantes existentes
+    # Cargar el historial para obtener el orden cronológico
+    historial = cargar_historial()
+    
+    # Ordenar el historial por fecha de generación (más reciente primero)
+    # Si no hay fecha, se coloca al final
+    historial_ordenado = sorted(
+        historial, 
+        key=lambda x: x.get('fecha_generacion', '0'), 
+        reverse=True
+    )
+    
+    # Crear un conjunto de IDs ya procesados para evitar duplicados
+    variantes_procesadas = set()
+    
+    # Lista para almacenar las variantes
     variantes = []
+    
+    # Primero añadir las variantes del historial, ordenadas por más recientes
+    for item in historial_ordenado:
+        variante_id = item.get('id')
+        
+        # Evitar duplicados
+        if variante_id in variantes_procesadas:
+            continue
+            
+        # Verificar si existen los archivos
+        tiene_examen = os.path.exists(os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx'))
+        tiene_hoja = os.path.exists(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf'))
+        tiene_plantilla = os.path.exists(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf'))
+        
+        # Añadir la variante a la lista
+        variantes.append({
+            'id': variante_id,
+            'seccion': item.get('seccion', 'No especificada'),
+            'tipo_evaluacion': item.get('tipo_texto', 'No especificado'),
+            'tiene_examen': tiene_examen,
+            'tiene_hoja': tiene_hoja,
+            'tiene_plantilla': tiene_plantilla
+        })
+        
+        variantes_procesadas.add(variante_id)
+    
+    # Luego, añadir cualquier variante que esté en la carpeta pero no en el historial
     if os.path.exists(VARIANTES_FOLDER):
         for archivo in os.listdir(VARIANTES_FOLDER):
             if archivo.startswith('variante_') and archivo.endswith('.json'):
                 variante_id = archivo.replace('variante_', '').replace('.json', '')
                 
-                # Verificar si existen los demás archivos
+                # Evitar duplicados
+                if variante_id in variantes_procesadas:
+                    continue
+                
+                # Verificar si existen los archivos
                 tiene_examen = os.path.exists(os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx'))
                 tiene_hoja = os.path.exists(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf'))
                 tiene_plantilla = os.path.exists(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf'))
                 
+                # Añadir la variante a la lista
                 variantes.append({
                     'id': variante_id,
+                    'seccion': 'No especificada',
+                    'tipo_evaluacion': 'No especificado',
                     'tiene_examen': tiene_examen,
                     'tiene_hoja': tiene_hoja,
                     'tiene_plantilla': tiene_plantilla
@@ -1876,46 +1943,77 @@ def ver_calificaciones(seccion, tipo_evaluacion):
 
 @app.route('/generar_examen', methods=['POST'])
 def generar_examen():
-    form = ExamenForm(request.form)
-    
-    if form.validate():
-        num_variantes = form.num_variantes.data
-        seccion = form.seccion.data
-        tipo_evaluacion = form.tipo_evaluacion.data
+    try:
+        num_variantes = int(request.form.get('num_variantes', 1))
+        seccion = request.form.get('seccion', 'A')
+        tipo_evaluacion = request.form.get('tipo_evaluacion', 'parcial1')
         
-        # Guardar logo si fue subido
+        # Manejo del logo
         logo_path = None
-        if 'logo' in request.files and request.files['logo'].filename != '':
+        if 'logo' in request.files and request.files['logo'].filename:
             logo = request.files['logo']
             logo_filename = secure_filename(logo.filename)
             logo_path = os.path.join(UPLOAD_FOLDER, logo_filename)
             logo.save(logo_path)
         
+        # Generar variantes
         variantes_generadas = []
-        
         for i in range(num_variantes):
             variante_id = f"V{i+1}"
-            variante, respuestas = generar_variante(variante_id, seccion, tipo_evaluacion)
+            variante, respuestas = generar_variante(variante_id)
             
-            # Crear documentos
-            examen_filename = crear_examen_word(variante_id, seccion, tipo_evaluacion, logo_path)
-            hoja_filename = crear_hoja_respuestas(variante_id, seccion, tipo_evaluacion)
-            plantilla_filename = crear_plantilla_calificacion(variante_id, seccion, tipo_evaluacion)
-            respuestas_filename = crear_plantilla_calificacion_detallada(variante_id, seccion, tipo_evaluacion)
+            # Crear documentos (usando solo los parámetros que acepta cada función)
+            examen_filename = crear_examen_word(variante_id)
+            hoja_filename = crear_hoja_respuestas(variante_id)
+            plantilla_filename = crear_plantilla_calificacion(variante_id)
             
             variantes_generadas.append({
                 'id': variante_id,
                 'examen': examen_filename,
                 'hoja': hoja_filename,
                 'plantilla': plantilla_filename,
-                'respuestas': respuestas_filename
+                'seccion': seccion,  # Guardamos la sección
+                'tipo_evaluacion': tipo_evaluacion  # Guardamos el tipo
             })
+        
+        # Registrar en el historial
+        historial = cargar_historial()
+        
+        # Obtener nombres para mostrar
+        tipo_textos = {
+            'parcial1': 'Primer Parcial',
+            'parcial2': 'Segundo Parcial',
+            'final': 'Examen Final',
+            'corto': 'Evaluación Corta',
+            'recuperacion': 'Recuperación'
+        }
+        
+        # Añadir entrada al historial
+        fecha_generacion = datetime.now().strftime("%d/%m/%Y %H:%M")
+        for variante in variantes_generadas:
+            historial.append({
+                'id': variante['id'],
+                'seccion': seccion,
+                'tipo_evaluacion': tipo_evaluacion,
+                'tipo_texto': tipo_textos.get(tipo_evaluacion, tipo_evaluacion),
+                'fecha_generacion': fecha_generacion,
+                'examen': variante['examen'],
+                'hoja': variante['hoja'],
+                'plantilla': variante['plantilla']
+            })
+        
+        guardar_historial(historial)
         
         flash(f'Se han generado {num_variantes} variantes de examen para la sección {seccion}', 'success')
         return redirect(url_for('index'))
+    except Exception as e:
+        flash(f'Error al generar exámenes: {str(e)}', 'danger')
+        return redirect(url_for('index'))
     
-    flash('Error en el formulario. Revise los campos.', 'danger')
-    return redirect(url_for('index'))
+@app.route('/historial')
+def mostrar_historial():
+    historial = cargar_historial()
+    return render_template('historial.html', historial=historial)
 
 @app.route('/cargar_examenes_escaneados', methods=['GET', 'POST'])
 def cargar_examenes_escaneados():

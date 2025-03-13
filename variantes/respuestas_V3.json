@@ -1,40 +1,40 @@
 {
   "id": "V3",
   "primera_serie": [
-    1,
     4,
     1,
     0,
+    2,
+    0,
     1,
-    2,
     0,
-    2,
+    1,
     0,
-    1
+    2
   ],
   "segunda_serie": [
+    4,
     2,
-    0,
     3,
+    4,
     2,
-    1,
-    4
+    0
   ],
   "tercera_serie": {
-    "gini": 0.447,
+    "gini": 0.502,
     "dist_frecuencias": {
       "k": 5.64,
-      "rango": 47,
-      "amplitud": 8.33
+      "rango": 67,
+      "amplitud": 11.88
     },
     "tallo_hoja": {
-      "moda": 7.1,
-      "intervalo": "7-8"
+      "moda": 11.2,
+      "intervalo": "11-12"
     },
     "medidas_centrales": {
-      "media": 1583.6,
-      "mediana": 4601.28,
-      "moda": 2039.78
+      "media": 2492.98,
+      "mediana": 1679.78,
+      "moda": 1713.55
     }
   }
 }
