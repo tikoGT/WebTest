@@ -22,6 +22,7 @@
                         <div class="col-md-4">
                             <label for="seccion" class="form-label">Sección del Curso:</label>
                             <input type="text" class="form-control" id="seccion" name="seccion" required>
+                            <small class="text-muted">Ejemplo: S909</small>
                         </div>
                         <div class="col-md-4">
                             <label for="tipo_evaluacion" class="form-label">Tipo de Evaluación:</label>
@@ -39,6 +40,11 @@
                             <label for="logo" class="form-label">Logo de la Institución (opcional):</label>
                             <input type="file" class="form-control" id="logo" name="logo" accept=".jpg,.jpeg,.png">
                             <small class="text-muted">El logo aparecerá en el encabezado del examen.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="plantilla" class="form-label">Plantilla Word (opcional):</label>
+                            <input type="file" class="form-control" id="plantilla" name="plantilla" accept=".docx">
+                            <small class="text-muted">Plantilla base para el formato del examen.</small>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary">
