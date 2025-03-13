@@ -69,7 +69,8 @@
                                 <th>Tipo</th>
                                 <th>Examen</th>
                                 <th>Hoja de Respuestas</th>
-                                <th>Plantilla de Calificación</th>
+                                <th>Plantilla</th>
+                                <th>Solución Matemática</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
@@ -101,6 +102,15 @@
                                     {% if variante.tiene_plantilla %}
                                     <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename='Plantilla_' + variante.id + '.pdf') }}" class="btn btn-sm btn-warning">
                                         <i class="fas fa-download me-1"></i>Descargar
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-danger">No disponible</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if variante.solucion_matematica %}
+                                    <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename=variante.solucion_matematica) }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-calculator me-1"></i>Descargar
                                     </a>
                                     {% else %}
                                     <span class="badge bg-danger">No disponible</span>
