@@ -1,0 +1,40 @@
+{
+  "id": "V3",
+  "primera_serie": [
+    1,
+    4,
+    1,
+    0,
+    1,
+    2,
+    0,
+    2,
+    0,
+    1
+  ],
+  "segunda_serie": [
+    2,
+    0,
+    3,
+    2,
+    1,
+    4
+  ],
+  "tercera_serie": {
+    "gini": 0.447,
+    "dist_frecuencias": {
+      "k": 5.64,
+      "rango": 47,
+      "amplitud": 8.33
+    },
+    "tallo_hoja": {
+      "moda": 7.1,
+      "intervalo": "7-8"
+    },
+    "medidas_centrales": {
+      "media": 1583.6,
+      "mediana": 4601.28,
+      "moda": 2039.78
+    }
+  }
+}

@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Variante {{ variante.id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-warning text-dark">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Editar Variante {{ variante.id }}
+                    </h5>
+                    <div>
+                        <a href="{{ url_for('index') }}" class="btn btn-dark btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>Esta función permite realizar ajustes a la variante del examen. Los cambios afectarán a todos los documentos generados.
+                </div>
+                
+                <form action="{{ url_for('guardar_variante') }}" method="post">
+                    <input type="hidden" name="variante_id" value="{{ variante.id }}">
+                    
+                    <div class="mb-4">
+                        <h4>Primera Serie</h4>
+                        <p class="text-muted">Preguntas de opción múltiple (valor: 4 puntos cada una)</p>
+                        
+                        <div class="accordion" id="accordionSerie1">
+                            {% for pregunta in variante.primera_serie %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading1-{{ loop.index }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse1-{{ loop.index }}" aria-expanded="false" aria-controls="collapse1-{{ loop.index }}">
+                                        Pregunta {{ loop.index }}: {{ pregunta.pregunta|truncate(70) }}
+                                    </button>
+                                </h2>
+                                <div id="collapse1-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading1-{{ loop.index }}" data-bs-parent="#accordionSerie1">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="pregunta1-{{ loop.index }}" class="form-label">Enunciado de la pregunta:</label>
+                                            <textarea name="primera_serie[{{ loop.index0 }}][pregunta]" id="pregunta1-{{ loop.index }}" class="form-control" rows="3">{{ pregunta.pregunta }}</textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Opciones:</label>
+                                            {% for opcion in pregunta.opciones %}
+                                            <div class="input-group mb-2">
+                                                <input type="text" name="primera_serie[{{ loop.parent.index0 }}][opciones][{{ loop.index0 }}]" class="form-control" value="{{ opcion }}">
+                                                <div class="input-group-text">
+                                                    <input class="form-check-input mt-0" type="radio" name="primera_serie[{{ loop.parent.index0 }}][respuesta_correcta]" value="{{ loop.index0 }}" {% if loop.index0 == pregunta.respuesta_correcta %}checked{% endif %}>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4>Segunda Serie</h4>
+                        <p class="text-muted">Escenarios para identificar gráficos estadísticos (valor: 3.33 puntos cada uno)</p>
+                        
+                        <div class="accordion" id="accordionSerie2">
+                            {% for escenario in variante.segunda_serie %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading2-{{ loop.index }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse2-{{ loop.index }}" aria-expanded="false" aria-controls="collapse2-{{ loop.index }}">
+                                        Escenario {{ loop.index }}: {{ escenario.escenario|truncate(70) }}
+                                    </button>
+                                </h2>
+                                <div id="collapse2-{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading2-{{ loop.index }}" data-bs-parent="#accordionSerie2">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="escenario2-{{ loop.index }}" class="form-label">Descripción del escenario:</label>
+                                            <textarea name="segunda_serie[{{ loop.index0 }}][escenario]" id="escenario2-{{ loop.index }}" class="form-control" rows="3">{{ escenario.escenario }}</textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Opciones de gráficos:</label>
+                                            {% for opcion in escenario.opciones %}
+                                            <div class="input-group mb-2">
+                                                <input type="text" name="segunda_serie[{{ loop.parent.index0 }}][opciones][{{ loop.index0 }}]" class="form-control" value="{{ opcion }}" readonly>
+                                                <div class="input-group-text">
+                                                    <input class="form-check-input mt-0" type="radio" name="segunda_serie[{{ loop.parent.index0 }}][respuesta_correcta]" value="{{ loop.index0 }}" {% if loop.index0 == escenario.respuesta_correcta %}checked{% endif %}>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4>Tercera Serie</h4>
+                        <p class="text-muted">Ejercicios prácticos (valor: 10 puntos cada uno)</p>
+                        
+                        <div class="accordion" id="accordionSerie3">
+                            <!-- Ejercicio 1: Coeficiente de Gini -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading3-1">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3-1" aria-expanded="false" aria-controls="collapse3-1">
+                                        Ejercicio 1: Coeficiente de Gini
+                                    </button>
+                                </h2>
+                                <div id="collapse3-1" class="accordion-collapse collapse" aria-labelledby="heading3-1" data-bs-parent="#accordionSerie3">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="gini-title" class="form-label">Título del ejercicio:</label>
+                                            <input type="text" name="tercera_serie[0][title]" id="gini-title" class="form-control" value="{{ variante.tercera_serie[0].title }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Datos de la tabla:</label>
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Salario mensual en (Q)</th>
+                                                            <th>No. De trabajadores</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for i in range(variante.tercera_serie[0].ranges|length) %}
+                                                        <tr>
+                                                            <td>
+                                                                <input type="text" name="tercera_serie[0][ranges][{{ i }}]" class="form-control" value="{{ variante.tercera_serie[0].ranges[i] }}">
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" name="tercera_serie[0][workers][{{ i }}]" class="form-control" value="{{ variante.tercera_serie[0].workers[i] }}">
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Ejercicio 2: Distribución de Frecuencias -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading3-2">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3-2" aria-expanded="false" aria-controls="collapse3-2">
+                                        Ejercicio 2: Distribución de Frecuencias
+                                    </button>
+                                </h2>
+                                <div id="collapse3-2" class="accordion-collapse collapse" aria-labelledby="heading3-2" data-bs-parent="#accordionSerie3">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="sturgers-title" class="form-label">Título del ejercicio:</label>
+                                            <input type="text" name="tercera_serie[1][title]" id="sturgers-title" class="form-control" value="{{ variante.tercera_serie[1].title }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Datos para distribución de frecuencias:</label>
+                                            <div class="row">
+                                                {% for i in range(variante.tercera_serie[1].data|length) %}
+                                                <div class="col-md-2 mb-2">
+                                                    <input type="text" name="tercera_serie[1][data][{{ i }}]" class="form-control" value="{{ variante.tercera_serie[1].data[i] }}">
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Ejercicio 3: Tallo y Hoja -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading3-3">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3-3" aria-expanded="false" aria-controls="collapse3-3">
+                                        Ejercicio 3: Diagrama de Tallo y Hoja
+                                    </button>
+                                </h2>
+                                <div id="collapse3-3" class="accordion-collapse collapse" aria-labelledby="heading3-3" data-bs-parent="#accordionSerie3">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="stemleaf-title" class="form-label">Título del ejercicio:</label>
+                                            <input type="text" name="tercera_serie[2][title]" id="stemleaf-title" class="form-control" value="{{ variante.tercera_serie[2].title }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Datos para diagrama de tallo y hoja:</label>
+                                            <div class="row">
+                                                {% for i in range(variante.tercera_serie[2].data|length) %}
+                                                <div class="col-md-2 mb-2">
+                                                    <input type="text" name="tercera_serie[2][data][{{ i }}]" class="form-control" value="{{ variante.tercera_serie[2].data[i] }}">
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Ejercicio 4: Medidas de Tendencia Central -->
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading3-4">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse3-4" aria-expanded="false" aria-controls="collapse3-4">
+                                        Ejercicio 4: Medidas de Tendencia Central
+                                    </button>
+                                </h2>
+                                <div id="collapse3-4" class="accordion-collapse collapse" aria-labelledby="heading3-4" data-bs-parent="#accordionSerie3">
+                                    <div class="accordion-body">
+                                        <div class="mb-3">
+                                            <label for="central-title" class="form-label">Título del ejercicio:</label>
+                                            <input type="text" name="tercera_serie[3][title]" id="central-title" class="form-control" value="{{ variante.tercera_serie[3].title }}">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label">Datos de la tabla:</label>
+                                            <div class="table-responsive">
+                                                <table class="table table-bordered">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Precio en (Q)</th>
+                                                            <th>No. De productos</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for i in range(variante.tercera_serie[3].ranges|length) %}
+                                                        <tr>
+                                                            <td>
+                                                                <input type="text" name="tercera_serie[3][ranges][{{ i }}]" class="form-control" value="{{ variante.tercera_serie[3].ranges[i] }}">
+                                                            </td>
+                                                            <td>
+                                                                <input type="number" name="tercera_serie[3][count][{{ i }}]" class="form-control" value="{{ variante.tercera_serie[3].count[i] }}">
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Función para activar tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+{% endblock %}

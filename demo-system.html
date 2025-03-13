@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Generador de Exámenes de Estadística</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .footer {
+            padding: 20px 0;
+            text-align: center;
+            background-color: #f8f9fa;
+            margin-top: 50px;
+            border-top: 1px solid #e7e7e7;
+        }
+        .card {
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: bold;
+        }
+        .btn-action {
+            margin-right: 5px;
+        }
+        .main-content {
+            min-height: calc(100vh - 170px);
+            padding: 30px 0;
+        }
+        .alert {
+            border-radius: 10px;
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #007bff;
+        }
+        .option-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .option-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .option-list li:last-child {
+            border-bottom: none;
+        }
+        .preview-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .preview-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        /* Estilos adicionales para la demo */
+        .demo-alert {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .demo-notice {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mensaje de demostración -->
+    <div class="demo-notice">
+        <i class="fas fa-info-circle"></i> Vista demostrativa del sistema
+    </div>
+    
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-bar me-2"></i>Generador de Exámenes de Estadística
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">
+                            <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">
+                            <i class="fas fa-question-circle me-1"></i>Ayuda
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Alerta informativa -->
+    <div class="container mt-3">
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>¡Bienvenido al sistema!</strong> Se han generado correctamente 3 variantes de examen.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-cogs me-2"></i>Generar Nuevos Exámenes
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="#" method="post">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="num_variantes" class="form-label">Número de Variantes:</label>
+                                        <input type="number" class="form-control" id="num_variantes" name="num_variantes" min="1" max="10" value="3">
+                                        <small class="text-muted">Puedes generar hasta 10 variantes simultáneamente.</small>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="mostrarAlerta()">
+                                    <i class="fas fa-magic me-1"></i>Generar Exámenes
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-list me-2"></i>Variantes Generadas
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Examen</th>
+                                            <th>Hoja de Respuestas</th>
+                                            <th>Plantilla de Calificación</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>V1</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" onclick="mostrarAlerta('examen')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info" onclick="mostrarAlerta('hoja')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" onclick="mostrarAlerta('plantilla')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-success" onclick="mostrarPreview()">
+                                                        <i class="fas fa-eye me-1"></i>Vista Previa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-secondary" onclick="mostrarAlerta('todo')">
+                                                        <i class="fas fa-download me-1"></i>Todo
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger" onclick="mostrarAlerta('eliminar')">
+                                                        <i class="fas fa-trash me-1"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>V2</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" onclick="mostrarAlerta('examen')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info" onclick="mostrarAlerta('hoja')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" onclick="mostrarAlerta('plantilla')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-success" onclick="mostrarPreview()">
+                                                        <i class="fas fa-eye me-1"></i>Vista Previa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-secondary" onclick="mostrarAlerta('todo')">
+                                                        <i class="fas fa-download me-1"></i>Todo
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger" onclick="mostrarAlerta('eliminar')">
+                                                        <i class="fas fa-trash me-1"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>V3</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" onclick="mostrarAlerta('examen')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-info" onclick="mostrarAlerta('hoja')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning" onclick="mostrarAlerta('plantilla')">
+                                                    <i class="fas fa-download me-1"></i>Descargar
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <button class="btn btn-sm btn-success" onclick="mostrarPreview()">
+                                                        <i class="fas fa-eye me-1"></i>Vista Previa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-secondary" onclick="mostrarAlerta('todo')">
+                                                        <i class="fas fa-download me-1"></i>Todo
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger" onclick="mostrarAlerta('eliminar')">
+                                                        <i class="fas fa-trash me-1"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="feature-icon">
+                                <i class="fas fa-random"></i>
+                            </div>
+                            <h5 class="card-title">Múltiples Variantes</h5>
+                            <p class="card-text">Genera hasta 10 variantes diferentes del examen simultáneamente, con preguntas y ejercicios aleatorios para evitar copias.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="feature-icon">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <h5 class="card-title">Formatos Profesionales</h5>
+                            <p class="card-text">Exporta tus exámenes en formato Word y PDF, manteniendo el diseño profesional requerido por la institución.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <div class="feature-icon">
+                                <i class="fas fa-check-square"></i>
+                            </div>
+                            <h5 class="card-title">Sistema de Calificación</h5>
+                            <p class="card-text">Incluye plantillas de respuestas y hojas de calificación para facilitar la evaluación de los exámenes.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modal de Vista Previa (oculto inicialmente) -->
+            <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info text-white">
+                            <h5 class="modal-title">
+                                <i class="fas fa-eye me-2"></i>Vista Previa - Examen V1
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mb-4">
+                                <h2>Universidad Panamericana</h2>
+                                <h3>Facultad de Humanidades</h3>
+                                <h3>Estadística Básica</h3>
+                                <h3>Ing. Marco Antonio Jiménez</h3>
+                                <h3>2024</h3>
+                                <h1>Evaluación Parcial (V1)</h1>
+                                <hr>
+                                <p><strong>Nombre del estudiante:</strong> _______________________________________________________________</p>
+                                <p><strong>Fecha:</strong> ____________________ <strong>Carné:</strong> ___________________ <strong>Firma:</strong> ________________________</p>
+                            </div>
+
+                            <!-- Primera Serie -->
+                            <div class="mb-5">
+                                <h3>Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)</h3>
+                                <p><strong>Instrucciones:</strong> Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta. Subraye con lapicero la opción u opciones que considere correcta(s) para cada pregunta. Las respuestas hechas con lápiz no serán aceptadas como válidas.</p>
+                                
+                                <div class="preview-section">
+                                    <p><strong>1. Las Variables Estadísticas pueden ser:</strong></p>
+                                    <ul class="option-list">
+                                        <li><span>• Discretas</span></li>
+                                        <li><span class="text-success fw-bold">• Cualitativas ✓</span></li>
+                                        <li><span>• Indiscretas</span></li>
+                                        <li><span>• Cuantitativas</span></li>
+                                        <li><span>• Numéricas</span></li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="preview-section">
+                                    <p><strong>2. La toma de temperatura para ingresar a los centros comerciales es una variable:</strong></p>
+                                    <ul class="option-list">
+                                        <li><span>• Cualitativa</span></li>
+                                        <li><span class="text-success fw-bold">• Cuantitativa ✓</span></li>
+                                    </ul>
+                                </div>
+                                
+                                <!-- Más preguntas estarían aquí... -->
+                            </div>
+
+                            <!-- Segunda Serie -->
+                            <div class="mb-5">
+                                <h3>Segunda serie (Valor de cada respuesta correcta 3 puntos. Valor total de la serie 20 puntos)</h3>
+                                <p><strong>Instrucciones:</strong> Para cada uno de los siguientes escenarios, identifique qué tipo de gráfica sería más apropiada para representar los datos y explique brevemente por qué. Las opciones son: Gráfica de barras, Gráfica circular (pastel), Histograma de Pearson, Ojiva de Galton o Polígono de frecuencias.</p>
+                                
+                                <div class="preview-section">
+                                    <p><strong>1. Una compañía de telecomunicaciones quiere representar visualmente la distribución porcentual de sus ingresos por tipo de servicio (internet, telefonía fija, telefonía móvil, televisión por cable y servicios corporativos) durante el año fiscal 2023.</strong></p>
+                                    <ul class="option-list">
+                                        <li><span>• Gráfica de barras</span></li>
+                                        <li><span class="text-success fw-bold">• Gráfica circular (pastel) ✓</span></li>
+                                        <li><span>• Histograma de Pearson</span></li>
+                                        <li><span>• Ojiva de Galton</span></li>
+                                        <li><span>• Polígono de frecuencias</span></li>
+                                    </ul>
+                                </div>
+                                
+                                <!-- Más escenarios estarían aquí... -->
+                            </div>
+
+                            <!-- Tercera Serie (ejemplo abreviado) -->
+                            <div class="mb-5">
+                                <h3>Tercera serie (Valor de cada respuesta correcta 10 puntos. Valor total de la serie 40 puntos)</h3>
+                                <p><strong>Instrucciones:</strong> Desarrollar los ejercicios, dejando respaldo de sus operaciones. Asegúrese de escribir su respuesta final con lapicero; no se aceptarán respuestas escritas con lápiz. Mantenga su trabajo organizado y legible.</p>
+                                
+                                <!-- Ejercicio 1: Coeficiente de Gini -->
+                                <div class="preview-section">
+                                    <p><strong>1. La siguiente tabla muestra la distribución de salarios mensuales (en quetzales) de los trabajadores de la empresa ABC S.A:</strong></p>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Salario mensual en (Q)</th>
+                                                    <th>No. De trabajadores</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr><td>[1500-2000)</td><td>7</td></tr>
+                                                <tr><td>[2000-2500)</td><td>6</td></tr>
+                                                <tr><td>[2500-3000)</td><td>11</td></tr>
+                                                <tr><td>[3000-3500)</td><td>16</td></tr>
+                                                <tr><td>[3500-4000)</td><td>11</td></tr>
+                                                <tr><td>[4000-4500)</td><td>11</td></tr>
+                                                <tr><td>[4500-5000)</td><td>6</td></tr>
+                                                <tr><td>[5000-5500)</td><td>3</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <p>a) Complete la tabla para calcular el coeficiente de Gini.</p>
+                                    <p>b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.</p>
+                                    <p>c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.</p>
+                                    
+                                    <div class="alert alert-info mt-3">
+                                        <strong>Respuesta:</strong> El coeficiente de Gini aproximado es 0.423.
+                                    </div>
+                                </div>
+                                
+                                <!-- Más ejercicios estarían aquí... -->
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-success" onclick="mostrarAlerta('imprimir')">
+                                <i class="fas fa-print me-1"></i>Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p class="mb-0">© 2024 Generador de Exámenes de Estadística | Universidad Panamericana</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function mostrarAlerta(tipo) {
+            let mensaje = "Esta es una demostración. ";
+            
+            switch(tipo) {
+                case 'examen':
+                    mensaje += "En el sistema real, se descargaría el examen en formato Word.";
+                    break;
+                case 'hoja':
+                    mensaje += "En el sistema real, se descargaría la hoja de respuestas en PDF.";
+                    break;
+                case 'plantilla':
+                    mensaje += "En el sistema real, se descargaría la plantilla de calificación en PDF.";
+                    break;
+                case 'todo':
+                    mensaje += "En el sistema real, se descargarían todos los archivos en formato ZIP.";
+                    break;
+                case 'eliminar':
+                    mensaje += "En el sistema real, se eliminaría esta variante y todos sus archivos.";
+                    break;
+                case 'imprimir':
+                    mensaje += "En el sistema real, se abriría el diálogo de impresión.";
+                    break;
+                default:
+                    mensaje += "En el sistema real, se generarían los exámenes y se mostrarían en la tabla.";
+            }
+            
+            // Crear una alerta temporal
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'container mt-3';
+            alertDiv.innerHTML = `
+                <div class="alert alert-info alert-dismissible fade show" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>${mensaje}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Insertar después del navbar
+            const navbar = document.querySelector('.navbar');
+            navbar.parentNode.insertBefore(alertDiv, navbar.nextSibling);
+            
+            // Desaparecer después de 5 segundos
+            setTimeout(() => {
+                alertDiv.querySelector('.alert').classList.remove('show');
+                setTimeout(() => alertDiv.remove(), 500);
+            }, 5000);
+        }
+        
+        function mostrarPreview() {
+            const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+            modal.show();
+        }
+    </script>
+</body>
+</html>

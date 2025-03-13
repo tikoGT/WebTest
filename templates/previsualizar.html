@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block title %}Vista Previa - Examen {{ variante.id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-eye me-2"></i>Vista Previa - Examen {{ variante.id }}
+                    </h5>
+                    <div>
+                        <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>Volver
+                        </a>
+                        <button onclick="window.print()" class="btn btn-light btn-sm">
+                            <i class="fas fa-print me-1"></i>Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row print-section">
+    <div class="col-md-12">
+        <div class="text-center mb-4">
+            <h2>Universidad Panamericana</h2>
+            <h3>Facultad de Humanidades</h3>
+            <h3>Estadística Básica</h3>
+            <h3>Ing. Marco Antonio Jiménez</h3>
+            <h3>2024</h3>
+            <h1>Evaluación Parcial ({{ variante.id }})</h1>
+            <hr>
+            <p><strong>Nombre del estudiante:</strong> _______________________________________________________________</p>
+            <p><strong>Fecha:</strong> ____________________ <strong>Carné:</strong> ___________________ <strong>Firma:</strong> ________________________</p>
+        </div>
+
+        <!-- Primera Serie -->
+        <div class="mb-5">
+            <h3>Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)</h3>
+            <p><strong>Instrucciones:</strong> Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta. Subraye con lapicero la opción u opciones que considere correcta(s) para cada pregunta. Las respuestas hechas con lápiz no serán aceptadas como válidas.</p>
+            
+            {% for pregunta in variante.primera_serie %}
+            <div class="preview-section">
+                <p><strong>{{ loop.index }}. {{ pregunta.pregunta }}</strong></p>
+                <ul class="option-list">
+                    {% for opcion in pregunta.opciones %}
+                    <li>
+                        {% if loop.index0 == pregunta.respuesta_correcta %}
+                        <span class="text-success fw-bold">• {{ opcion }} ✓</span>
+                        {% else %}
+                        <span>• {{ opcion }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Segunda Serie -->
+        <div class="mb-5">
+            <h3>Segunda serie (Valor de cada respuesta correcta 3 puntos. Valor total de la serie 20 puntos)</h3>
+            <p><strong>Instrucciones:</strong> Para cada uno de los siguientes escenarios, identifique qué tipo de gráfica sería más apropiada para representar los datos y explique brevemente por qué. Las opciones son: Gráfica de barras, Gráfica circular (pastel), Histograma de Pearson, Ojiva de Galton o Polígono de frecuencias.</p>
+            
+            {% for escenario in variante.segunda_serie %}
+            <div class="preview-section">
+                <p><strong>{{ loop.index }}. {{ escenario.escenario }}</strong></p>
+                <ul class="option-list">
+                    {% for opcion in escenario.opciones %}
+                    <li>
+                        {% if loop.index0 == escenario.respuesta_correcta %}
+                        <span class="text-success fw-bold">• {{ opcion }} ✓</span>
+                        {% else %}
+                        <span>• {{ opcion }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Tercera Serie -->
+        <div class="mb-5">
+            <h3>Tercera serie (Valor de cada respuesta correcta 10 puntos. Valor total de la serie 40 puntos)</h3>
+            <p><strong>Instrucciones:</strong> Desarrollar los ejercicios, dejando respaldo de sus operaciones. Asegúrese de escribir su respuesta final con lapicero; no se aceptarán respuestas escritas con lápiz. Mantenga su trabajo organizado y legible.</p>
+            
+            <!-- Ejercicio 1: Coeficiente de Gini -->
+            <div class="preview-section">
+                <p><strong>1. {{ variante.tercera_serie[0].title }}</strong></p>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Salario mensual en (Q)</th>
+                                <th>No. De trabajadores</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in range(variante.tercera_serie[0].ranges|length) %}
+                            <tr>
+                                <td>{{ variante.tercera_serie[0].ranges[i] }}</td>
+                                <td>{{ variante.tercera_serie[0].workers[i] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p>a) Complete la tabla para calcular el coeficiente de Gini.</p>
+                <p>b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.</p>
+                <p>c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.</p>
+                
+                <div class="alert alert-info mt-3">
+                    <strong>Respuesta:</strong> El coeficiente de Gini aproximado es {{ respuestas.tercera_serie.gini }}.
+                </div>
+            </div>
+            
+            <!-- Ejercicio 2: Distribución de frecuencias -->
+            <div class="preview-section">
+                <p><strong>2. {{ variante.tercera_serie[1].title }}</strong></p>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            {% for i in range(0, variante.tercera_serie[1].data|length, 5) %}
+                            <tr>
+                                {% for j in range(5) %}
+                                    {% if i + j < variante.tercera_serie[1].data|length %}
+                                    <td>{{ variante.tercera_serie[1].data[i + j] }}</td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p>Construya la tabla de distribución de frecuencias correspondiente.</p>
+                
+                <div class="alert alert-info mt-3">
+                    <strong>Respuestas:</strong><br>
+                    K = {{ respuestas.tercera_serie.dist_frecuencias.k }}<br>
+                    Rango = {{ respuestas.tercera_serie.dist_frecuencias.rango }}<br>
+                    Amplitud = {{ respuestas.tercera_serie.dist_frecuencias.amplitud }}
+                </div>
+            </div>
+            
+            <!-- Ejercicio 3: Tallo y Hoja -->
+            <div class="preview-section">
+                <p><strong>3. {{ variante.tercera_serie[2].title }}</strong></p>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            {% for i in range(0, variante.tercera_serie[2].data|length, 8) %}
+                            <tr>
+                                {% for j in range(8) %}
+                                    {% if i + j < variante.tercera_serie[2].data|length %}
+                                    <td>{{ variante.tercera_serie[2].data[i + j] }}</td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p>a) Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.</p>
+                <p>b) Interprete los datos y explique brevemente sus resultados.</p>
+                
+                <div class="alert alert-info mt-3">
+                    <strong>Respuestas:</strong><br>
+                    Moda = {{ respuestas.tercera_serie.tallo_hoja.moda }}<br>
+                    Intervalo de mayor concentración = {{ respuestas.tercera_serie.tallo_hoja.intervalo }}
+                </div>
+            </div>
+            
+            <!-- Ejercicio 4: Medidas de Tendencia Central -->
+            <div class="preview-section">
+                <p><strong>4. {{ variante.tercera_serie[3].title }}</strong></p>
+                
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Precio en (Q)</th>
+                                <th>No. De productos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in range(variante.tercera_serie[3].ranges|length) %}
+                            <tr>
+                                <td>{{ variante.tercera_serie[3].ranges[i] }}</td>
+                                <td>{{ variante.tercera_serie[3].count[i] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <strong>Respuestas:</strong><br>
+                    Media = {{ respuestas.tercera_serie.medidas_centrales.media }}<br>
+                    Mediana = {{ respuestas.tercera_serie.medidas_centrales.mediana }}<br>
+                    Moda = {{ respuestas.tercera_serie.medidas_centrales.moda }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .navbar, .footer, .no-print, .card-header, .alert {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .preview-section {
+            border: none;
+            padding: 0;
+            margin-bottom: 30px;
+        }
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 100%;
+            padding: 0;
+        }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Generador de Exámenes de Estadística{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs me-2"></i>Generar Nuevos Exámenes
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('generar_examen') }}" method="post">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="num_variantes" class="form-label">Número de Variantes:</label>
+                            <input type="number" class="form-control" id="num_variantes" name="num_variantes" min="1" max="10" value="1">
+                            <small class="text-muted">Puedes generar hasta 10 variantes simultáneamente.</small>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-magic me-1"></i>Generar Exámenes
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if variantes %}
+<div class="row mt-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list me-2"></i>Variantes Generadas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Examen</th>
+                                <th>Hoja de Respuestas</th>
+                                <th>Plantilla de Calificación</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for variante in variantes %}
+                            <tr>
+                                <td>{{ variante.id }}</td>
+                                <td>
+                                    {% if variante.tiene_examen %}
+                                    <a href="{{ url_for('descargar_archivo', tipo='examen', filename='Examen_' + variante.id + '.docx') }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-download me-1"></i>Descargar
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-danger">No disponible</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if variante.tiene_hoja %}
+                                    <a href="{{ url_for('descargar_archivo', tipo='hoja', filename='HojaRespuestas_' + variante.id + '.pdf') }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-download me-1"></i>Descargar
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-danger">No disponible</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if variante.tiene_plantilla %}
+                                    <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename='Plantilla_' + variante.id + '.pdf') }}" class="btn btn-sm btn-warning">
+                                        <i class="fas fa-download me-1"></i>Descargar
+                                    </a>
+                                    {% else %}
+                                    <span class="badge bg-danger">No disponible</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('previsualizar', variante_id=variante.id) }}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-eye me-1"></i>Vista Previa
+                                        </a>
+                                        <a href="{{ url_for('descargar_todo', id_examen=variante.id) }}" class="btn btn-sm btn-secondary">
+                                            <i class="fas fa-download me-1"></i>Todo
+                                        </a>
+                                        <form action="{{ url_for('eliminar_variante', variante_id=variante.id) }}" method="post" onsubmit="return confirm('¿Estás seguro que deseas eliminar esta variante?');" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash me-1"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle me-2"></i>No hay variantes generadas. ¡Crea tu primer examen!
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="feature-icon">
+                    <i class="fas fa-random"></i>
+                </div>
+                <h5 class="card-title">Múltiples Variantes</h5>
+                <p class="card-text">Genera hasta 10 variantes diferentes del examen simultáneamente, con preguntas y ejercicios aleatorios para evitar copias.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="feature-icon">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <h5 class="card-title">Formatos Profesionales</h5>
+                <p class="card-text">Exporta tus exámenes en formato Word y PDF, manteniendo el diseño profesional requerido por la institución.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="feature-icon">
+                    <i class="fas fa-check-square"></i>
+                </div>
+                <h5 class="card-title">Sistema de Calificación</h5>
+                <p class="card-text">Incluye plantillas de respuestas y hojas de calificación para facilitar la evaluación de los exámenes.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // Tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+{% endblock %}
