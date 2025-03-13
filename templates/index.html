@@ -108,7 +108,7 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if variante.solucion_matematica %}
+                                    {% if variante.tiene_solucion %}
                                     <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename=variante.solucion_matematica) }}" class="btn btn-sm btn-success">
                                         <i class="fas fa-calculator me-1"></i>Descargar
                                     </a>
