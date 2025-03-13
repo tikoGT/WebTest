@@ -1305,7 +1305,10 @@ def crear_plantilla_calificacion_detallada(variante_id, seccion="A", tipo_evalua
     return filename
 
 # Función para crear una hoja de respuestas
-def crear_hoja_respuestas(variante_id):
+def crear_hoja_respuestas(variante_id, seccion="A", tipo_evaluacion="parcial1"):
+    """
+    Crea una hoja de respuestas PDF con sección y tipo de evaluación
+    """
     # Dimensiones de página
     width, height = 2480, 3508  # A4 a 300 DPI
     margin = 200  # Margen uniforme
@@ -1340,210 +1343,47 @@ def crear_hoja_respuestas(variante_id):
     
     # Tipo de examen (centrado)
     exam_y = faculty_y + 70
-    draw.text((width//2, exam_y), f"EVALUACIÓN PARCIAL", 
+    
+    # Convertir el tipo de evaluación a un texto legible
+    tipo_textos = {
+        'parcial1': 'PRIMER PARCIAL',
+        'parcial2': 'SEGUNDO PARCIAL',
+        'final': 'EXAMEN FINAL',
+        'corto': 'EVALUACIÓN CORTA',
+        'recuperacion': 'RECUPERACIÓN'
+    }
+    tipo_texto = tipo_textos.get(tipo_evaluacion, 'EVALUACIÓN PARCIAL')
+    
+    draw.text((width//2, exam_y), f"{tipo_texto} - SECCIÓN {seccion}", 
               fill="black", font=header_font, anchor="mm")
     
-    # ==================== INFORMACIÓN DEL ESTUDIANTE ====================
-    # Establecer posiciones exactas
-    info_y = exam_y + 120
-    left_x = margin
-    label_width = 200  # Ancho fijo para etiquetas
+    # El resto de tu código de crear_hoja_respuestas sigue igual
+    # ...
     
-    # NOMBRE
-    nombre_y = info_y
-    draw.text((left_x, nombre_y), "NOMBRE:", fill="black", font=text_font)
-    # Línea para nombre (inicia justo después de la etiqueta)
-    line_start_x = left_x + label_width
-    draw.line((line_start_x, nombre_y + 20, width - margin, nombre_y + 20), 
-              fill="black", width=3)
+    # Cambiar el nombre del archivo para incluir sección y tipo
+    # Crear carpeta con timestamp para esta generación
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join(HOJAS_RESPUESTA_FOLDER, f'{seccion}_{tipo_evaluacion}_{timestamp}')
+    os.makedirs(output_dir, exist_ok=True)
     
-    # CARNÉ y FIRMA (en la misma línea)
-    carne_y = nombre_y + 80
-    draw.text((left_x, carne_y), "CARNÉ:", fill="black", font=text_font)
-    # Línea para carné
-    draw.line((line_start_x, carne_y + 20, line_start_x + 450, carne_y + 20), 
-              fill="black", width=3)
-    
-    # FIRMA (alineada a la derecha de carné)
-    firma_x = line_start_x + 600
-    draw.text((firma_x, carne_y), "FIRMA:", fill="black", font=text_font)
-    # Línea para firma
-    draw.line((firma_x + label_width, carne_y + 20, width - margin, carne_y + 20), 
-              fill="black", width=3)
-    
-    # VARIANTE (nueva, al lado de firma)
-    variante_x = firma_x + 500
-    draw.text((variante_x, carne_y), "VARIANTE:", fill="black", font=text_font)
-    # Línea para variante
-    draw.rectangle((variante_x + label_width, carne_y - 20, variante_x + label_width + 80, carne_y + 20), 
-            outline="black", width=2)
-    
-    # ==================== PRIMERA SERIE ====================
-    serie1_y = carne_y + 100
-    
-    # Encabezado
-    draw.rectangle((left_x, serie1_y, width - margin, serie1_y + 70), 
-                  outline="black", fill="#EEEEEE", width=2)
-    draw.text((width//2, serie1_y + 35), "PRIMERA SERIE (40 PUNTOS)", 
-              fill="black", font=header_font, anchor="mm")
-    
-    # Configuración para opciones
-    questions_start_y = serie1_y + 120
-    question_height = 80  # Altura entre preguntas
-    
-    # Posiciones horizontales fijas para número y opciones
-    number_x = left_x + 50
-    circle_radius = 22
-    
-    # Calcular posiciones absolutas para opciones (a, b, c, d, e)
-    option_xs = [550, 700, 850, 1000, 1150]  # Posiciones fijas para los centros de círculos
-    
-    # Dibujar preguntas y opciones
-    for q in range(10):
-        q_y = questions_start_y + (q * question_height)
-        
-        # Número de pregunta
-        draw.text((number_x, q_y), f"{q+1}.", fill="black", font=text_font, anchor="lm")
-        
-        # Opciones (a-e)
-        for i, opt_x in enumerate(option_xs):
-            # Dibujar círculo perfectamente centrado
-            draw.ellipse((opt_x - circle_radius, q_y - circle_radius, 
-                          opt_x + circle_radius, q_y + circle_radius), 
-                         outline="black", width=2)
-            
-            # Letra centrada en círculo
-            draw.text((opt_x, q_y), chr(97 + i), fill="black", font=option_font, anchor="mm")
-    
-    # ==================== SEGUNDA SERIE ====================
-    serie2_y = questions_start_y + (11 * question_height)
-    
-    # Encabezado
-    draw.rectangle((left_x, serie2_y, width - margin, serie2_y + 70), 
-                  outline="black", fill="#EEEEEE", width=2)
-    draw.text((width//2, serie2_y + 35), "SEGUNDA SERIE (20 PUNTOS)", 
-              fill="black", font=header_font, anchor="mm")
-    
-    # Opciones
-    questions2_start_y = serie2_y + 120
-    
-    # Dibujar preguntas y opciones
-    for q in range(6):
-        q_y = questions2_start_y + (q * question_height)
-        
-        # Número de pregunta
-        draw.text((number_x, q_y), f"{q+1}.", fill="black", font=text_font, anchor="lm")
-        
-        # Opciones (a-e) - Mismas posiciones que primera serie
-        for i, opt_x in enumerate(option_xs):
-            # Dibujar círculo
-            draw.ellipse((opt_x - circle_radius, q_y - circle_radius, 
-                          opt_x + circle_radius, q_y + circle_radius), 
-                         outline="black", width=2)
-            
-            # Letra centrada
-            draw.text((opt_x, q_y), chr(97 + i), fill="black", font=option_font, anchor="mm")
-    
-    # ==================== TERCERA SERIE ====================
-    serie3_y = questions2_start_y + (7 * question_height)
-    
-    # Encabezado
-    draw.rectangle((left_x, serie3_y, width - margin, serie3_y + 70), 
-                  outline="black", fill="#EEEEEE", width=2)
-    draw.text((width//2, serie3_y + 35), "TERCERA SERIE (40 PUNTOS)", 
-              fill="black", font=header_font, anchor="mm")
-    
-    # Respuestas numéricas
-    resp_start_y = serie3_y + 120
-    resp_height = 80  # Reducimos un poco para que quepa todo
-    
-    # Configuración para cajas de respuesta
-    box_x = left_x + 500
-    box_width = 400
-    
-    # 1. Coeficiente de Gini
-    gini_y = resp_start_y
-    draw.text((left_x + 50, gini_y), "1. Coeficiente de Gini:", 
-              fill="black", font=text_font, anchor="lm")
-    
-    # Caja para respuesta
-    draw.rectangle((box_x, gini_y - 30, box_x + box_width, gini_y + 30), 
-                  outline="black", width=2)
-    
-    # 2. Distribución de frecuencias
-    dist_title_y = gini_y + resp_height
-    draw.text((left_x + 50, dist_title_y), "2. Distribución de frecuencias:", 
-              fill="black", font=text_font, anchor="lm")
-    
-    # K
-    k_y = dist_title_y + resp_height
-    draw.text((left_x + 100, k_y), "K:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, k_y - 30, box_x + box_width, k_y + 30), 
-                  outline="black", width=2)
-    
-    # Rango
-    rango_y = k_y + resp_height
-    draw.text((left_x + 100, rango_y), "Rango:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, rango_y - 30, box_x + box_width, rango_y + 30), 
-                  outline="black", width=2)
-    
-    # Amplitud
-    amp_y = rango_y + resp_height
-    draw.text((left_x + 100, amp_y), "Amplitud:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, amp_y - 30, box_x + box_width, amp_y + 30), 
-                  outline="black", width=2)
-    
-    # 3. Tallo y Hoja
-    th_title_y = amp_y + resp_height
-    draw.text((left_x + 50, th_title_y), "3. Tallo y Hoja:", 
-              fill="black", font=text_font, anchor="lm")
-    
-    # Valor moda
-    moda_y = th_title_y + resp_height
-    draw.text((left_x + 100, moda_y), "Valor moda:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, moda_y - 30, box_x + box_width, moda_y + 30), 
-                  outline="black", width=2)
-    
-    # Intervalo mayor concentración
-    intervalo_y = moda_y + resp_height
-    draw.text((left_x + 100, intervalo_y), "Intervalo:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, intervalo_y - 30, box_x + box_width, intervalo_y + 30), 
-                  outline="black", width=2)
-    
-    # 4. Medidas de tendencia central
-    mc_title_y = intervalo_y + resp_height
-    draw.text((left_x + 50, mc_title_y), "4. Medidas de tendencia central:", 
-              fill="black", font=text_font, anchor="lm")
-    
-    # Media
-    media_y = mc_title_y + resp_height
-    draw.text((left_x + 100, media_y), "Media:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, media_y - 30, box_x + box_width, media_y + 30), 
-                  outline="black", width=2)
-    
-    # Mediana
-    mediana_y = media_y + resp_height
-    draw.text((left_x + 100, mediana_y), "Mediana:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, mediana_y - 30, box_x + box_width, mediana_y + 30), 
-                  outline="black", width=2)
-    
-    # Moda (nuevo campo)
-    moda_y = mediana_y + resp_height
-    draw.text((left_x + 100, moda_y), "Moda:", fill="black", font=text_font, anchor="lm")
-    draw.rectangle((box_x, moda_y - 30, box_x + box_width, moda_y + 30), 
-                outline="black", width=2)
-    
-    # Código de variante (discreto en esquina)
-    draw.text((width - 200, height - 40), f"V{variante_id}", fill="black", 
-              font=text_font if 'arial.ttf' in ImageFont.truetype.__code__.co_varnames else ImageFont.load_default())
+    # Nombre de archivo con todos los detalles
+    filename = f'HojaRespuestas_{seccion}_{tipo_evaluacion}_{variante_id}.pdf'
+    filepath = os.path.join(output_dir, filename)
     
     # Guardar la imagen
-    image.save(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf'))
+    image.save(filepath)
     
-    return f'HojaRespuestas_{variante_id}.pdf'
+    # También guardar en la carpeta principal para compatibilidad
+    image.save(os.path.join(HOJAS_RESPUESTA_FOLDER, filename))
+    
+    return filename
 
 # Función para crear una plantilla de calificación
-def crear_plantilla_calificacion(variante_id):
+def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parcial1"):
+    """
+    Crea una plantilla de calificación que incluye la sección y tipo de evaluación,
+    guardándola en una carpeta organizada con timestamp.
+    """
     # Cargar respuestas de la variante
     with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
         respuestas = json.load(f)
@@ -1556,19 +1396,39 @@ def crear_plantilla_calificacion(variante_id):
     # Cargar fuentes
     try:
         title_font = ImageFont.truetype("arial.ttf", 80)
+        subtitle_font = ImageFont.truetype("arial.ttf", 60)
         text_font = ImageFont.truetype("arial.ttf", 48)
+        small_font = ImageFont.truetype("arial.ttf", 36)
     except:
+        print("No se pudieron cargar las fuentes personalizadas, usando fuentes predeterminadas")
         title_font = ImageFont.load_default()
+        subtitle_font = ImageFont.load_default()
         text_font = ImageFont.load_default()
+        small_font = ImageFont.load_default()
     
-    # Título
-    draw.text((width//2, 150), f"PLANTILLA DE CALIFICACIÓN - {variante_id}", fill="black", font=title_font, anchor="mm")
-    draw.text((width//2, 250), "SOLO PARA USO DEL DOCENTE", fill="black", font=title_font, anchor="mm")
+    # Convertir el tipo de evaluación a texto legible
+    tipo_textos = {
+        'parcial1': 'PRIMER PARCIAL',
+        'parcial2': 'SEGUNDO PARCIAL',
+        'final': 'EXAMEN FINAL',
+        'corto': 'EVALUACIÓN CORTA',
+        'recuperacion': 'RECUPERACIÓN'
+    }
+    tipo_texto = tipo_textos.get(tipo_evaluacion, 'EVALUACIÓN PARCIAL')
+    
+    # Título principal
+    draw.text((width//2, 150), f"PLANTILLA DE CALIFICACIÓN", fill="black", font=title_font, anchor="mm")
+    draw.text((width//2, 250), f"{tipo_texto} - SECCIÓN {seccion} - {variante_id}", fill="black", font=subtitle_font, anchor="mm")
+    draw.text((width//2, 350), "SOLO PARA USO DEL DOCENTE", fill="black", font=subtitle_font, anchor="mm")
+    
+    # Fecha y detalles
+    fecha_actual = datetime.now().strftime("%d/%m/%Y")
+    draw.text((width-200, 450), f"Fecha: {fecha_actual}", fill="black", font=small_font, anchor="rm")
     
     # Primera Serie - Marcar respuestas correctas
-    draw.text((width//2, 400), "PRIMERA SERIE", fill="black", font=text_font, anchor="mm")
+    draw.text((width//2, 550), "PRIMERA SERIE (40 PUNTOS)", fill="black", font=text_font, anchor="mm")
     
-    y_pos = 500
+    y_pos = 650
     for i, respuesta in enumerate(respuestas["primera_serie"], 1):
         # Número de pregunta
         draw.text((200, y_pos), f"{i}.", fill="black", font=text_font)
@@ -1578,16 +1438,24 @@ def crear_plantilla_calificacion(variante_id):
         for j in range(5):  # Opciones a-e
             if j == respuesta:  # Si es la respuesta correcta
                 draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", fill="black", width=3)
+                letra_color = "white"
             else:
                 draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", width=1)
+                letra_color = "black"
             
-            draw.text((x_pos+25, y_pos), chr(97+j), fill="white" if j == respuesta else "black", font=text_font, anchor="mm")
+            # Añadir la letra de la opción
+            draw.text((x_pos+25, y_pos), chr(97+j), fill=letra_color, font=text_font, anchor="mm")
             x_pos += 120
         
         y_pos += 80
+        
+        # Si hay demasiadas preguntas, ajustar para que entren en la página
+        if i == 7:  # Después de 7 preguntas, reajustar el espaciado
+            y_pos = 650
+            x_pos = width // 2 + 100  # Mover a la segunda columna
     
     # Segunda Serie - Marcar respuestas correctas
-    draw.text((width//2, 1350), "SEGUNDA SERIE", fill="black", font=text_font, anchor="mm")
+    draw.text((width//2, 1350), "SEGUNDA SERIE (20 PUNTOS)", fill="black", font=text_font, anchor="mm")
     
     y_pos = 1450
     for i, respuesta in enumerate(respuestas["segunda_serie"], 1):
@@ -1599,16 +1467,19 @@ def crear_plantilla_calificacion(variante_id):
         for j in range(5):  # Opciones a-e
             if j == respuesta:  # Si es la respuesta correcta
                 draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", fill="black", width=3)
+                letra_color = "white"
             else:
                 draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", width=1)
+                letra_color = "black"
             
-            draw.text((x_pos+25, y_pos), chr(97+j), fill="white" if j == respuesta else "black", font=text_font, anchor="mm")
+            # Añadir la letra de la opción
+            draw.text((x_pos+25, y_pos), chr(97+j), fill=letra_color, font=text_font, anchor="mm")
             x_pos += 120
         
         y_pos += 80
     
     # Tercera Serie - Respuestas numéricas
-    draw.text((width//2, 2000), "TERCERA SERIE", fill="black", font=text_font, anchor="mm")
+    draw.text((width//2, 2000), "TERCERA SERIE (40 PUNTOS)", fill="black", font=text_font, anchor="mm")
     
     y_pos = 2100
     # Coeficiente de Gini
@@ -1642,10 +1513,25 @@ def crear_plantilla_calificacion(variante_id):
     y_pos += 70
     draw.text((250, y_pos), f"Moda: {respuestas['tercera_serie']['medidas_centrales']['moda']}", fill="black", font=text_font)
     
-    # Guardar la imagen
-    image.save(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf'))
+    # Añadir información de pie de página
+    footer_y = height - 100
+    draw.text((width//2, footer_y), f"Universidad Panamericana - Facultad de Humanidades", fill="black", font=small_font, anchor="mm")
+    draw.text((width//2, footer_y + 50), f"Variante: {variante_id} | Sección: {seccion} | {tipo_texto}", fill="black", font=small_font, anchor="mm")
     
-    return f'Plantilla_{variante_id}.pdf'
+    # Crear carpeta con timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join(PLANTILLAS_FOLDER, f'{seccion}_{tipo_evaluacion}_{timestamp}')
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Guardar con nombre que incluye todos los detalles
+    filename = f'Plantilla_{seccion}_{tipo_evaluacion}_{variante_id}.pdf'
+    filepath = os.path.join(output_dir, filename)
+    image.save(filepath)
+    
+    # También guardar en la carpeta principal para compatibilidad
+    image.save(os.path.join(PLANTILLAS_FOLDER, filename))
+    
+    return filename
 
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
