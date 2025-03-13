@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Estudiantes{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-users me-2"></i>Gestión de Estudiantes
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="agregar-tab" data-bs-toggle="tab" data-bs-target="#agregar" type="button" role="tab" aria-controls="agregar" aria-selected="true">Agregar Estudiante</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cargar-tab" data-bs-toggle="tab" data-bs-target="#cargar" type="button" role="tab" aria-controls="cargar" aria-selected="false">Cargar CSV</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="listar-tab" data-bs-toggle="tab" data-bs-target="#listar" type="button" role="tab" aria-controls="listar" aria-selected="false">Listar Estudiantes</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content p-3 border border-top-0 rounded-bottom" id="myTabContent">
+                    <!-- Agregar estudiante -->
+                    <div class="tab-pane fade show active" id="agregar" role="tabpanel" aria-labelledby="agregar-tab">
+                        <form action="{{ url_for('gestionar_estudiantes') }}" method="post">
+                            <input type="hidden" name="action" value="agregar">
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="nombre" class="form-label">Nombre completo:</label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="carne" class="form-label">Carné:</label>
+                                    <input type="text" class="form-control" id="carne" name="carne" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="seccion" class="form-label">Sección:</label>
+                                    <input type="text" class="form-control" id="seccion" name="seccion" required>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus me-1"></i>Agregar Estudiante
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Cargar CSV -->
+                    <div class="tab-pane fade" id="cargar" role="tabpanel" aria-labelledby="cargar-tab">
+                        <div class="alert alert-info">
+                            <p><i class="fas fa-info-circle me-2"></i>Suba un archivo CSV con la lista de estudiantes. El formato debe ser:</p>
+                            <pre>Nombre,Carné
+Juan Pérez,12345
+María López,67890</pre>
+                        </div>
+                        
+                        <form action="{{ url_for('gestionar_estudiantes') }}" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="action" value="cargar_csv">
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="archivo_csv" class="form-label">Archivo CSV:</label>
+                                    <input type="file" class="form-control" id="archivo_csv" name="archivo_csv" accept=".csv" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="seccion_csv" class="form-label">Sección:</label>
+                                    <input type="text" class="form-control" id="seccion_csv" name="seccion" required>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-file-upload me-1"></i>Cargar Estudiantes
+                            </button>
+                        </form>
+                    </div>
+                    
+                    <!-- Listar estudiantes -->
+                    <div class="tab-pane fade" id="listar" role="tabpanel" aria-labelledby="listar-tab">
+                        {% if estudiantes %}
+                            {% for seccion, lista in estudiantes.items() %}
+                            <div class="mb-4">
+                                <h4>Sección: {{ seccion }}</h4>
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Nombre</th>
+                                                <th>Carné</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for estudiante in lista %}
+                                            <tr>
+                                                <td>{{ loop.index }}</td>
+                                                <td>{{ estudiante.nombre }}</td>
+                                                <td>{{ estudiante.carne }}</td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        <a href="#" class="btn btn-sm btn-info">
+                                                            <i class="fas fa-user me-1"></i>Detalles
+                                                        </a>
+                                                        <button class="btn btn-sm btn-danger">
+                                                            <i class="fas fa-trash me-1"></i>Eliminar
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <h5>Calificaciones</h5>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('ver_calificaciones', seccion=seccion, tipo_evaluacion='parcial1') }}" class="btn btn-sm btn-outline-primary">
+                                            Primer Parcial
+                                        </a>
+                                        <a href="{{ url_for('ver_calificaciones', seccion=seccion, tipo_evaluacion='parcial2') }}" class="btn btn-sm btn-outline-primary">
+                                            Segundo Parcial
+                                        </a>
+                                        <a href="{{ url_for('ver_calificaciones', seccion=seccion, tipo_evaluacion='final') }}" class="btn btn-sm btn-outline-primary">
+                                            Examen Final
+                                        </a>
+                                        <a href="{{ url_for('ver_calificaciones', seccion=seccion, tipo_evaluacion='corto') }}" class="btn btn-sm btn-outline-primary">
+                                            Evaluación Corta
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <p><i class="fas fa-exclamation-triangle me-2"></i>No hay estudiantes registrados. Agregue estudiantes usando las pestañas superiores.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

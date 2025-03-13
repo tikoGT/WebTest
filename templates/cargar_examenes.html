@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Cargar Exámenes Escaneados{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-upload me-2"></i>Cargar Exámenes Escaneados
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <p><i class="fas fa-info-circle me-2"></i>Seleccione múltiples archivos PDF que contengan los exámenes escaneados. Es importante que los exámenes correspondan a la misma variante y sección.</p>
+                    <p>El sistema intentará detectar automáticamente las respuestas marcadas y calcular la puntuación según la plantilla correcta.</p>
+                </div>
+                
+                <form action="{{ url_for('cargar_examenes_escaneados') }}" method="post" enctype="multipart/form-data">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="seccion" class="form-label">Sección:</label>
+                            <input type="text" class="form-control" id="seccion" name="seccion" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tipo_evaluacion" class="form-label">Tipo de Evaluación:</label>
+                            <select class="form-select" id="tipo_evaluacion" name="tipo_evaluacion" required>
+                                <option value="parcial1">Primer Parcial</option>
+                                <option value="parcial2">Segundo Parcial</option>
+                                <option value="final">Examen Final</option>
+                                <option value="corto">Evaluación Corta</option>
+                                <option value="recuperacion">Recuperación</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="variante_id" class="form-label">Variante:</label>
+                            <select class="form-select" id="variante_id" name="variante_id" required>
+                                {% for variante in variantes %}
+                                <option value="{{ variante }}">{{ variante }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="archivos" class="form-label">Seleccionar Archivos PDF:</label>
+                        <input type="file" class="form-control" id="archivos" name="archivos" multiple accept=".pdf" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>Cargar y Procesar
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

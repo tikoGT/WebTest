@@ -12,12 +12,33 @@
                 </h5>
             </div>
             <div class="card-body">
-                <form action="{{ url_for('generar_examen') }}" method="post">
+                <form action="{{ url_for('generar_examen') }}" method="post" enctype="multipart/form-data">
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label for="num_variantes" class="form-label">Número de Variantes:</label>
                             <input type="number" class="form-control" id="num_variantes" name="num_variantes" min="1" max="10" value="1">
                             <small class="text-muted">Puedes generar hasta 10 variantes simultáneamente.</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="seccion" class="form-label">Sección del Curso:</label>
+                            <input type="text" class="form-control" id="seccion" name="seccion" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tipo_evaluacion" class="form-label">Tipo de Evaluación:</label>
+                            <select class="form-select" id="tipo_evaluacion" name="tipo_evaluacion">
+                                <option value="parcial1">Primer Parcial</option>
+                                <option value="parcial2">Segundo Parcial</option>
+                                <option value="final">Examen Final</option>
+                                <option value="corto">Evaluación Corta</option>
+                                <option value="recuperacion">Recuperación</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="logo" class="form-label">Logo de la Institución (opcional):</label>
+                            <input type="file" class="form-control" id="logo" name="logo" accept=".jpg,.jpeg,.png">
+                            <small class="text-muted">El logo aparecerá en el encabezado del examen.</small>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary">

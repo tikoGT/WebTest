@@ -13,9 +13,21 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
 from PIL import Image, ImageDraw, ImageFont
 import base64
+from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileAllowed
+from wtforms import StringField, SelectField, IntegerField
+from wtforms.validators import DataRequired, NumberRange
+from werkzeug.utils import secure_filename
+import cv2
+import numpy as np
+import pytesseract
+from pdf2image import convert_from_path
+from docx.shared import RGBColor, Pt
+from docx.enum.style import WD_STYLE_TYPE
 
 app = Flask(__name__)
 app.secret_key = "estadisticabasica2024"
+app.config['WTF_CSRF_ENABLED'] = False  # Solo para pruebas iniciales
 
 # Directorios de almacenamiento
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -23,6 +35,48 @@ VARIANTES_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'var
 EXAMENES_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'examenes')
 PLANTILLAS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'plantillas')
 HOJAS_RESPUESTA_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hojas_respuesta')
+EXAMENES_ESCANEADOS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'examenes_escaneados')
+if not os.path.exists(EXAMENES_ESCANEADOS_FOLDER):
+    os.makedirs(EXAMENES_ESCANEADOS_FOLDER)
+
+# Márgenes de error aceptables para calificación
+MARGENES_ERROR = {
+    'gini': 0.05,               # ±5% para coeficiente de Gini
+    'dist_frecuencias': {
+        'k': 0.5,               # ±0.5 para K (número de clases)
+        'rango': 2,             # ±2 para el rango
+        'amplitud': 0.5         # ±0.5 para la amplitud
+    },
+    'tallo_hoja': {
+        'moda': 0.5,            # ±0.5 para el valor de la moda
+        'intervalo': 1          # ±1 para el intervalo de mayor concentración
+    },
+    'medidas_centrales': {
+        'media': 50,            # ±50 para la media (depende del rango de datos)
+        'mediana': 50,          # ±50 para la mediana
+        'moda': 50              # ±50 para la moda
+    }
+}
+
+# Formulario para generación de exámenes
+class ExamenForm(FlaskForm):
+    num_variantes = IntegerField('Número de Variantes', 
+                                validators=[NumberRange(min=1, max=10)],
+                                default=1)
+    seccion = StringField('Sección del Curso', validators=[DataRequired()])
+    tipo_evaluacion = SelectField('Tipo de Evaluación', 
+                                  choices=[
+                                      ('parcial1', 'Primer Parcial'),
+                                      ('parcial2', 'Segundo Parcial'),
+                                      ('final', 'Examen Final'),
+                                      ('corto', 'Evaluación Corta'),
+                                      ('recuperacion', 'Recuperación')
+                                  ])
+    logo = FileField('Logo de la Institución', 
+                     validators=[FileAllowed(['jpg', 'png', 'jpeg'], 'Solo imágenes')])
+
+# Base de datos simple para almacenar información de estudiantes
+estudiantes_db = {}
 
 # Crear directorios si no existen
 for folder in [UPLOAD_FOLDER, VARIANTES_FOLDER, EXAMENES_FOLDER, PLANTILLAS_FOLDER, HOJAS_RESPUESTA_FOLDER]:
@@ -307,8 +361,7 @@ def descargar_todo(id_examen):
     return send_from_directory(UPLOAD_FOLDER, f'examen_completo_{id_examen}.zip', as_attachment=True)
 
 # Generador de exámenes
-def generar_variante(variante_id="V1"):
-    # Crear variante de Primera Serie (barajar preguntas)
+def generar_variante(variante_id="V1", seccion="A", tipo_evaluacion="parcial1"):    # Crear variante de Primera Serie (barajar preguntas)
     primera_serie = preguntas_base_primera.copy()
     random.shuffle(primera_serie)
     primera_serie = primera_serie[:10]  # Tomar solo 10 preguntas
@@ -428,7 +481,7 @@ def generar_variante(variante_id="V1"):
     return variante, respuestas
 
 # Función para crear examen de Word a partir de una variante
-def crear_examen_word(variante_id):
+def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo_path=None):
     # Cargar la variante
     with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
         variante = json.load(f)
@@ -439,25 +492,72 @@ def crear_examen_word(variante_id):
     # Configurar márgenes
     sections = doc.sections
     for section in sections:
-        section.top_margin = Inches(1)
-        section.bottom_margin = Inches(1)
-        section.left_margin = Inches(1)
-        section.right_margin = Inches(1)
+        section.top_margin = Inches(0.7)
+        section.bottom_margin = Inches(0.7)
+        section.left_margin = Inches(0.8)
+        section.right_margin = Inches(0.8)
+    
+    # Definir estilos
+    styles = doc.styles
+    
+    # Estilo para encabezado principal
+    title_style = styles.add_style('TitleStyle', WD_STYLE_TYPE.PARAGRAPH)
+    title_font = title_style.font
+    title_font.name = 'Arial'
+    title_font.size = Pt(16)
+    title_font.bold = True
+    title_font.color.rgb = RGBColor(0, 0, 102)  # Azul oscuro
+    
+    # Estilo para subtítulos
+    subtitle_style = styles.add_style('SubtitleStyle', WD_STYLE_TYPE.PARAGRAPH)
+    subtitle_font = subtitle_style.font
+    subtitle_font.name = 'Arial'
+    subtitle_font.size = Pt(12)
+    subtitle_font.bold = True
+    
+    # Estilo para texto normal
+    normal_style = styles.add_style('NormalStyle', WD_STYLE_TYPE.PARAGRAPH)
+    normal_font = normal_style.font
+    normal_font.name = 'Arial'
+    normal_font.size = Pt(11)
+    
+    # Encabezado con tabla
+    header_table = doc.add_table(rows=1, cols=2)
+    header_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    header_table.style = 'Table Grid'
+    
+    # Celda para logo
+    logo_cell = header_table.cell(0, 0)
+    logo_paragraph = logo_cell.paragraphs[0]
+    
+    if logo_path and os.path.exists(logo_path):
+        logo_paragraph.add_run().add_picture(logo_path, width=Inches(1.0))
+    else:
+        logo_paragraph.text = "LOGO"
+    
+    # Celda para título
+    title_cell = header_table.cell(0, 1)
     
     # Título Universidad
-    title = doc.add_heading('Universidad Panamericana', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    univ_para = title_cell.add_paragraph('Universidad Panamericana', style='TitleStyle')
+    univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     # Facultad y curso
-    for header_text in ['Facultad de Humanidades', 'Estadística Básica', 'Ing. Marco Antonio Jiménez', '2025']:
-        header = doc.add_paragraph()
+    for header_text in ['Facultad de Humanidades', f'Estadística Básica - Sección {seccion}', 'Ing. Marco Antonio Jiménez', '2025']:
+        header = title_cell.add_paragraph(header_text, style='SubtitleStyle')
         header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = header.add_run(header_text)
-        run.bold = True
-        run.font.size = Pt(12)
     
     # Título del examen
-    exam_title = doc.add_heading(f'Evaluación Parcial ({variante_id})', 1)
+    tipo_eval_textos = {
+        'parcial1': 'Primer Examen Parcial',
+        'parcial2': 'Segundo Examen Parcial',
+        'final': 'Examen Final',
+        'corto': 'Evaluación Corta',
+        'recuperacion': 'Examen de Recuperación'
+    }
+    
+    tipo_texto = tipo_eval_textos.get(tipo_evaluacion, 'Evaluación Parcial')
+    exam_title = doc.add_heading(f'{tipo_texto} ({variante_id})', 1)
     exam_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     
     # Información del estudiante
@@ -602,10 +702,556 @@ def crear_examen_word(variante_id):
         table4.cell(i, 0).text = rango
         table4.cell(i, 1).text = str(central_tendency_data["count"][i-1])
     
-    # Guardar el documento
-    doc.save(os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx'))
+    # Guardar el documento con nombre que incluye sección y tipo
+    filename = f'Examen_{seccion}_{tipo_evaluacion}_{variante_id}.docx'
+    doc.save(os.path.join(EXAMENES_FOLDER, filename))
     
-    return f'Examen_{variante_id}.docx'
+    return filename
+
+def crear_plantilla_calificacion_detallada(variante_id, seccion="A", tipo_evaluacion="parcial1"):
+    # Cargar respuestas de la variante
+    with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
+        respuestas = json.load(f)
+    
+    # Cargar la variante para acceder a los datos de los problemas
+    with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
+        variante = json.load(f)
+    
+    # Crear documento Word para respuestas detalladas
+    doc = Document()
+    
+    # Configurar estilos y formato
+    sections = doc.sections
+    for section in sections:
+        section.top_margin = Inches(0.7)
+        section.bottom_margin = Inches(0.7)
+        section.left_margin = Inches(0.8)
+        section.right_margin = Inches(0.8)
+    
+    # Título
+    doc.add_heading(f'RESPUESTAS DETALLADAS - {tipo_evaluacion.upper()} - SECCIÓN {seccion}', 0)
+    doc.add_heading(f'Variante: {variante_id}', 1)
+    doc.add_paragraph(f'Fecha de generación: {datetime.now().strftime("%d/%m/%Y")}')
+    doc.add_paragraph('PARA USO EXCLUSIVO DEL DOCENTE')
+    
+    # Primera Serie - Respuestas de opción múltiple
+    doc.add_heading('PRIMERA SERIE (40 PUNTOS)', 1)
+    
+    table1 = doc.add_table(rows=len(respuestas["primera_serie"])+1, cols=3)
+    table1.style = 'Table Grid'
+    
+    # Encabezados
+    encabezados = ["Pregunta", "Respuesta Correcta", "Justificación"]
+    for i, encabezado in enumerate(encabezados):
+        cell = table1.cell(0, i)
+        cell.text = encabezado
+        cell.paragraphs[0].runs[0].bold = True
+    
+    # Respuestas primera serie
+    for i, (resp_idx, pregunta) in enumerate(zip(respuestas["primera_serie"], variante["primera_serie"]), 1):
+        table1.cell(i, 0).text = f"{i}. {pregunta['pregunta']}"
+        
+        # Obtener texto de respuesta correcta
+        texto_respuesta = pregunta["opciones"][resp_idx]
+        table1.cell(i, 1).text = texto_respuesta
+        
+        # Justificación genérica basada en el tema
+        justificaciones = [
+            "Esta es la definición correcta según los principios básicos de estadística.",
+            "La respuesta es correcta según la teoría estadística.",
+            "Esta característica define correctamente el concepto mencionado.",
+            "La opción seleccionada es la única que cumple con los criterios estadísticos adecuados.",
+            "Según los conceptos estadísticos estudiados, esta es la única respuesta válida."
+        ]
+        table1.cell(i, 2).text = random.choice(justificaciones)
+    
+    # Segunda Serie
+    doc.add_heading('SEGUNDA SERIE (20 PUNTOS)', 1)
+    
+    table2 = doc.add_table(rows=len(respuestas["segunda_serie"])+1, cols=3)
+    table2.style = 'Table Grid'
+    
+    # Encabezados
+    for i, encabezado in enumerate(encabezados):
+        cell = table2.cell(0, i)
+        cell.text = encabezado
+        cell.paragraphs[0].runs[0].bold = True
+    
+    # Respuestas segunda serie
+    for i, (resp_idx, escenario) in enumerate(zip(respuestas["segunda_serie"], variante["segunda_serie"]), 1):
+        table2.cell(i, 0).text = f"{i}. {escenario['escenario']}"
+        
+        # Obtener texto de respuesta correcta
+        texto_respuesta = escenario["opciones"][resp_idx]
+        table2.cell(i, 1).text = texto_respuesta
+        
+        # Justificaciones específicas para cada tipo de gráfico
+        justificaciones_graficos = {
+            "Gráfica de barras": "Es ideal para comparar valores entre categorías discretas. Permite una comparación visual directa entre elementos.",
+            "Gráfica circular (pastel)": "Adecuada para mostrar proporciones y porcentajes de un todo. Ideal cuando se quiere enfatizar la contribución de cada parte al total.",
+            "Histograma de Pearson": "Perfecto para visualizar la distribución de datos continuos. Permite identificar la forma, centralidad y dispersión de los datos.",
+            "Ojiva de Galton": "Muestra la frecuencia acumulativa, permitiendo determinar qué porcentaje de datos está por debajo de cierto valor.",
+            "Polígono de frecuencias": "Útil para visualizar tendencias y evolución temporal. Conecta puntos de frecuencia para mostrar el comportamiento general de los datos."
+        }
+        
+        table2.cell(i, 2).text = justificaciones_graficos.get(texto_respuesta, "Esta gráfica es la más adecuada para el escenario planteado.")
+    
+    # Tercera Serie - Soluciones paso a paso
+    doc.add_heading('TERCERA SERIE (40 PUNTOS)', 1)
+    
+    # 1. Coeficiente de Gini
+    doc.add_heading('1. Coeficiente de Gini', 2)
+    p = doc.add_paragraph("Datos del problema:")
+    p.add_run("\nDistribución de salarios mensuales:").bold = True
+    
+    # Tabla con datos originales
+    gini_data = variante["tercera_serie"][0]
+    table_gini = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
+    table_gini.style = 'Table Grid'
+    
+    # Encabezados
+    table_gini.cell(0, 0).text = "Salario mensual en (Q)"
+    table_gini.cell(0, 1).text = "No. De trabajadores"
+    
+    # Datos
+    for i, (rango, trabajadores) in enumerate(zip(gini_data["ranges"], gini_data["workers"]), 1):
+        table_gini.cell(i, 0).text = rango
+        table_gini.cell(i, 1).text = str(trabajadores)
+    
+    # Solución paso a paso
+    doc.add_paragraph("Solución paso a paso:", style='Heading 3')
+    
+    # Paso 1: Cálculo de la tabla completa
+    doc.add_paragraph("Paso 1: Completar la tabla para el cálculo del coeficiente de Gini", style='Heading 4')
+    p = doc.add_paragraph()
+    p.add_run("Primero, calculamos las columnas adicionales necesarias:").italic = True
+    
+    # Crear tabla extendida
+    cols = ["Salario", "No. trabajadores", "Prop. población", "Prop. acumulada pobl.", "Punto medio", "Prop. ingreso", "Prop. acumulada ingreso"]
+    table_ext = doc.add_table(rows=len(gini_data["ranges"])+2, cols=len(cols))
+    table_ext.style = 'Table Grid'
+    
+    # Encabezados
+    for i, col in enumerate(cols):
+        table_ext.cell(0, i).text = col
+    
+    # Total de trabajadores
+    total_trabajadores = sum(gini_data["workers"])
+    
+    # Calcular puntos medios y proporciones
+    puntos_medios = []
+    for rango in gini_data["ranges"]:
+        # Extraer límites del rango (por ejemplo, "[1500-2000)" → 1500 y 2000)
+        limites = rango.replace('[', '').replace(')', '').split('-')
+        limite_inf = float(limites[0])
+        limite_sup = float(limites[1])
+        punto_medio = (limite_inf + limite_sup) / 2
+        puntos_medios.append(punto_medio)
+    
+    # Calcular ingresos por categoría
+    ingresos_categoria = [pm * t for pm, t in zip(puntos_medios, gini_data["workers"])]
+    total_ingresos = sum(ingresos_categoria)
+    
+    # Llenar la tabla extendida
+    prop_acum_pob = 0
+    prop_acum_ing = 0
+    
+    for i, (rango, trabajadores, punto_medio, ingreso_cat) in enumerate(zip(gini_data["ranges"], gini_data["workers"], puntos_medios, ingresos_categoria), 1):
+        # Datos básicos
+        table_ext.cell(i, 0).text = rango
+        table_ext.cell(i, 1).text = str(trabajadores)
+        
+        # Proporción de población
+        prop_pob = trabajadores / total_trabajadores
+        table_ext.cell(i, 2).text = f"{prop_pob:.4f}"
+        
+        # Proporción acumulada de población
+        prop_acum_pob += prop_pob
+        table_ext.cell(i, 3).text = f"{prop_acum_pob:.4f}"
+        
+        # Punto medio
+        table_ext.cell(i, 4).text = f"{punto_medio:.2f}"
+        
+        # Proporción de ingreso
+        prop_ing = ingreso_cat / total_ingresos
+        table_ext.cell(i, 5).text = f"{prop_ing:.4f}"
+        
+        # Proporción acumulada de ingreso
+        prop_acum_ing += prop_ing
+        table_ext.cell(i, 6).text = f"{prop_acum_ing:.4f}"
+    
+    # Totales
+    table_ext.cell(len(gini_data["ranges"])+1, 0).text = "TOTAL"
+    table_ext.cell(len(gini_data["ranges"])+1, 1).text = str(total_trabajadores)
+    table_ext.cell(len(gini_data["ranges"])+1, 2).text = "1.0000"
+    table_ext.cell(len(gini_data["ranges"])+1, 5).text = "1.0000"
+    
+    # Paso 2: Cálculo del coeficiente
+    doc.add_paragraph("Paso 2: Cálculo del coeficiente de Gini", style='Heading 4')
+    p = doc.add_paragraph()
+    p.add_run("Para calcular el coeficiente de Gini, usamos la fórmula:").italic = True
+    
+    p = doc.add_paragraph()
+    p.add_run("G = 1 - Σ(Xi - Xi-1)(Yi + Yi-1)").bold = True
+    p.add_run(" donde:")
+    
+    p = doc.add_paragraph()
+    p.add_run("Xi = proporción acumulada de población")
+    p.add_run("\nYi = proporción acumulada de ingreso")
+    
+    # Cálculo del coeficiente de Gini
+    gini_value = respuestas["tercera_serie"]["gini"]
+    
+    p = doc.add_paragraph()
+    p.add_run(f"Resultado: El coeficiente de Gini es {gini_value}").bold = True
+    
+    p = doc.add_paragraph()
+    p.add_run(f"Interpretación: ").bold = True
+    if gini_value < 0.3:
+        p.add_run("Este valor indica una distribución relativamente equitativa de los salarios entre los trabajadores de la empresa.")
+    elif gini_value < 0.5:
+        p.add_run("Este valor indica una desigualdad moderada en la distribución de salarios dentro de la empresa.")
+    else:
+        p.add_run("Este valor indica una desigualdad significativa en la distribución de salarios dentro de la empresa.")
+    
+    # 2. Distribución de frecuencias - Método Sturgers
+    doc.add_heading('2. Distribución de Frecuencias - Método Sturgers', 2)
+    p = doc.add_paragraph("Datos del problema:")
+    
+    # Mostrar los datos originales
+    sturgers_data = variante["tercera_serie"][1]
+    p = doc.add_paragraph("Valores observados: ")
+    for i, valor in enumerate(sturgers_data["data"]):
+        if i > 0:
+            p.add_run(", ")
+        p.add_run(valor)
+    
+    # Paso 1: Cálculo de K
+    doc.add_paragraph("Paso 1: Cálculo del número de clases (K)", style='Heading 4')
+    k_value = respuestas["tercera_serie"]["dist_frecuencias"]["k"]
+    p = doc.add_paragraph()
+    p.add_run("Utilizando la fórmula de Sturgers: K = 1 + 3.322 × log₁₀(n)")
+    p.add_run(f"\nDonde n = {len(sturgers_data['data'])} (número de observaciones)")
+    p.add_run(f"\nK = 1 + 3.322 × log₁₀({len(sturgers_data['data'])})")
+    p.add_run(f"\nK = 1 + 3.322 × {math.log10(len(sturgers_data['data'])):.4f}")
+    p.add_run(f"\nK = 1 + {3.322 * math.log10(len(sturgers_data['data'])):.4f}")
+    p.add_run(f"\nK = {k_value}")
+    p.add_run("\nRedondeando, utilizaremos K = " + str(round(k_value)))
+    
+    # Paso 2: Cálculo del rango
+    doc.add_paragraph("Paso 2: Cálculo del rango", style='Heading 4')
+    valores_numericos = [int(x) for x in sturgers_data["data"]]
+    min_valor = min(valores_numericos)
+    max_valor = max(valores_numericos)
+    rango = respuestas["tercera_serie"]["dist_frecuencias"]["rango"]
+    
+    p = doc.add_paragraph()
+    p.add_run(f"Valor mínimo = {min_valor}")
+    p.add_run(f"\nValor máximo = {max_valor}")
+    p.add_run(f"\nRango = Valor máximo - Valor mínimo = {max_valor} - {min_valor} = {rango}")
+    
+    # Paso 3: Cálculo de la amplitud
+    doc.add_paragraph("Paso 3: Cálculo de la amplitud de clase", style='Heading 4')
+    amplitud = respuestas["tercera_serie"]["dist_frecuencias"]["amplitud"]
+    
+    p = doc.add_paragraph()
+    p.add_run(f"Amplitud = Rango / K = {rango} / {k_value:.2f} = {amplitud}")
+    p.add_run(f"\nRedondeando, utilizaremos una amplitud de clase de {math.ceil(amplitud)}")
+    
+    # Mostrar tabla de distribución de frecuencias
+    doc.add_paragraph("Paso 4: Construcción de la tabla de distribución de frecuencias", style='Heading 4')
+    
+    # Calcular límites de clase
+    k_redondeado = round(k_value)
+    amplitud_redondeada = math.ceil(amplitud)
+    
+    limite_inferior = min_valor
+    limites = []
+    
+    for i in range(k_redondeado):
+        limite_superior = limite_inferior + amplitud_redondeada
+        limites.append((limite_inferior, limite_superior))
+        limite_inferior = limite_superior
+    
+    # Crear tabla de distribución
+    dist_table = doc.add_table(rows=k_redondeado+1, cols=6)
+    dist_table.style = 'Table Grid'
+    
+    # Encabezados
+    encabezados_dist = ["Límites de clase", "Frecuencia absoluta", "Frecuencia relativa", "Frecuencia acumulada", "Marca de clase", "Densidad de frecuencia"]
+    for i, encabezado in enumerate(encabezados_dist):
+        dist_table.cell(0, i).text = encabezado
+    
+    # Cálculo de frecuencias
+    frecuencias = [0] * k_redondeado
+    for valor in valores_numericos:
+        for i, (li, ls) in enumerate(limites):
+            if li <= valor < ls or (i == k_redondeado - 1 and valor == ls):  # El último intervalo incluye ambos extremos
+                frecuencias[i] += 1
+                break
+    
+    # Llenar la tabla
+    frec_acum = 0
+    for i, ((li, ls), frec) in enumerate(zip(limites, frecuencias), 1):
+        # Límites de clase
+        dist_table.cell(i, 0).text = f"[{li} - {ls})"
+        
+        # Frecuencia absoluta
+        dist_table.cell(i, 1).text = str(frec)
+        
+        # Frecuencia relativa
+        frec_rel = frec / len(valores_numericos)
+        dist_table.cell(i, 2).text = f"{frec_rel:.4f}"
+        
+        # Frecuencia acumulada
+        frec_acum += frec
+        dist_table.cell(i, 3).text = str(frec_acum)
+        
+        # Marca de clase
+        marca = (li + ls) / 2
+        dist_table.cell(i, 4).text = f"{marca:.2f}"
+        
+        # Densidad de frecuencia
+        densidad = frec / amplitud_redondeada
+        dist_table.cell(i, 5).text = f"{densidad:.4f}"
+    
+    # 3. Diagrama de Tallo y Hoja
+    doc.add_heading('3. Diagrama de Tallo y Hoja', 2)
+    stem_leaf_data = variante["tercera_serie"][2]
+    
+    p = doc.add_paragraph("Datos del problema:")
+    for i, valor in enumerate(stem_leaf_data["data"]):
+        if i > 0:
+            p.add_run(", ")
+        p.add_run(valor)
+    
+    doc.add_paragraph("Paso 1: Organización de los datos para el diagrama", style='Heading 4')
+    
+    # Convierte los valores a floats y organiza por tallo y hoja
+    valores_sl = [float(x) for x in stem_leaf_data["data"]]
+    
+    # Determinar tallos y hojas
+    stem_leaf = {}
+    
+    # Enfoque para valores con un decimal (ej: 2.3, 3.5, etc.)
+    for valor in valores_sl:
+        tallo = int(valor)
+        hoja = int((valor - tallo) * 10)  # Toma el primer decimal
+        
+        if tallo not in stem_leaf:
+            stem_leaf[tallo] = []
+        
+        stem_leaf[tallo].append(hoja)
+    
+    # Ordenar cada lista de hojas
+    for tallo in stem_leaf:
+        stem_leaf[tallo].sort()
+    
+    # Crear la representación del diagrama
+    p = doc.add_paragraph("Diagrama de tallo y hoja:")
+    
+    # Tabla para el diagrama
+    sl_table = doc.add_table(rows=len(stem_leaf)+1, cols=2)
+    sl_table.style = 'Table Grid'
+    
+    # Encabezados
+    sl_table.cell(0, 0).text = "Tallo"
+    sl_table.cell(0, 1).text = "Hojas"
+    
+    # Llenar la tabla
+    for i, (tallo, hojas) in enumerate(sorted(stem_leaf.items()), 1):
+        sl_table.cell(i, 0).text = str(tallo)
+        
+        # Formar la cadena de hojas
+        hojas_str = " ".join(str(h) for h in hojas)
+        sl_table.cell(i, 1).text = hojas_str
+    
+    # Interpretación
+    doc.add_paragraph("Paso 2: Interpretación del diagrama", style='Heading 4')
+    
+    # Encontrar el tallo con más hojas (moda del tallo)
+    tallo_moda = max(stem_leaf.items(), key=lambda x: len(x[1]))[0]
+    
+    # Si hay varios tallos con la misma cantidad de hojas, tomar el promedio
+    tallos_max = [t for t, h in stem_leaf.items() if len(h) == len(stem_leaf[tallo_moda])]
+    if len(tallos_max) > 1:
+        tallo_moda = sum(tallos_max) / len(tallos_max)
+    
+    # Encontrar la hoja que más se repite en el tallo moda
+    if isinstance(tallo_moda, int) and tallo_moda in stem_leaf:
+        hojas_moda = stem_leaf[tallo_moda]
+        # Contar frecuencias
+        hoja_freq = {}
+        for h in hojas_moda:
+            if h not in hoja_freq:
+                hoja_freq[h] = 0
+            hoja_freq[h] += 1
+        
+        # Hoja con mayor frecuencia
+        hoja_moda = max(hoja_freq.items(), key=lambda x: x[1])[0]
+        
+        # Valor de la moda
+        valor_moda = tallo_moda + hoja_moda/10
+    else:
+        valor_moda = respuestas["tercera_serie"]["tallo_hoja"]["moda"]
+    
+    # Intervalo de mayor concentración
+    intervalo = respuestas["tercera_serie"]["tallo_hoja"]["intervalo"]
+    
+    p = doc.add_paragraph()
+    p.add_run(f"Del diagrama de tallo y hoja podemos observar que:")
+    p.add_run(f"\n\n1. El valor que más se repite (moda) es aproximadamente {valor_moda}.")
+    p.add_run(f"\n\n2. La mayor concentración de datos se encuentra en el intervalo {intervalo}.")
+    p.add_run(f"\n\n3. Los datos parecen tener una distribución {'simétrica' if abs(min(valores_sl) - valor_moda) - abs(max(valores_sl) - valor_moda) < 1 else 'asimétrica'}.")
+    
+    # 4. Medidas de tendencia central
+    doc.add_heading('4. Medidas de Tendencia Central', 2)
+    central_data = variante["tercera_serie"][3]
+    
+    # Mostrar datos originales
+    p = doc.add_paragraph("Datos del problema:")
+    
+    # Tabla con los datos originales
+    table_central = doc.add_table(rows=len(central_data["ranges"])+1, cols=2)
+    table_central.style = 'Table Grid'
+    
+    # Encabezados
+    table_central.cell(0, 0).text = "Precio en (Q)"
+    table_central.cell(0, 1).text = "No. De productos"
+    
+    # Datos
+    for i, (rango, count) in enumerate(zip(central_data["ranges"], central_data["count"]), 1):
+        table_central.cell(i, 0).text = rango
+        table_central.cell(i, 1).text = str(count)
+    
+    # Paso 1: Preparación de datos para el cálculo
+    doc.add_paragraph("Paso 1: Preparación para el cálculo", style='Heading 4')
+    
+    # Extraer límites de clase y puntos medios
+    limites_central = []
+    puntos_medios = []
+    
+    for rango in central_data["ranges"]:
+        lims = rango.replace('[', '').replace(')', '').split('-')
+        lim_inf = float(lims[0])
+        lim_sup = float(lims[1])
+        limites_central.append((lim_inf, lim_sup))
+        puntos_medios.append((lim_inf + lim_sup) / 2)
+    
+    # Tabla extendida para cálculos
+    table_calc = doc.add_table(rows=len(central_data["ranges"])+2, cols=5)
+    table_calc.style = 'Table Grid'
+    
+    # Encabezados
+    encabezados_calc = ["Clase", "Límites", "Marca de clase (xi)", "Frecuencia (fi)", "xi × fi"]
+    for i, encabezado in enumerate(encabezados_calc):
+        table_calc.cell(0, i).text = encabezado
+    
+    # Calcular valores
+    suma_freq = 0
+    suma_xi_fi = 0
+    
+    for i, ((li, ls), xi, fi) in enumerate(zip(limites_central, puntos_medios, central_data["count"]), 1):
+        # Clase
+        table_calc.cell(i, 0).text = str(i)
+        
+        # Límites
+        table_calc.cell(i, 1).text = f"[{li} - {ls})"
+        
+        # Marca de clase
+        table_calc.cell(i, 2).text = f"{xi:.2f}"
+        
+        # Frecuencia
+        table_calc.cell(i, 3).text = str(fi)
+        
+        # xi × fi
+        xi_fi = xi * fi
+        table_calc.cell(i, 4).text = f"{xi_fi:.2f}"
+        
+        suma_freq += fi
+        suma_xi_fi += xi_fi
+    
+    # Totales
+    table_calc.cell(len(central_data["ranges"])+1, 0).text = "Total"
+    table_calc.cell(len(central_data["ranges"])+1, 3).text = str(suma_freq)
+    table_calc.cell(len(central_data["ranges"])+1, 4).text = f"{suma_xi_fi:.2f}"
+    
+    # Paso 2: Cálculo de la media
+    doc.add_paragraph("Paso 2: Cálculo de la media", style='Heading 4')
+    media = respuestas["tercera_serie"]["medidas_centrales"]["media"]
+    
+    p = doc.add_paragraph()
+    p.add_run("La media se calcula con la fórmula:")
+    p.add_run("\n\nMedia = Σ(xi × fi) / Σfi")
+    p.add_run(f"\n\nMedia = {suma_xi_fi:.2f} / {suma_freq}")
+    p.add_run(f"\n\nMedia = {media}")
+    
+    # Paso 3: Cálculo de la mediana
+    doc.add_paragraph("Paso 3: Cálculo de la mediana", style='Heading 4')
+    mediana = respuestas["tercera_serie"]["medidas_centrales"]["mediana"]
+    
+    # Calcular la posición de la mediana
+    n_2 = suma_freq / 2
+    
+    p = doc.add_paragraph()
+    p.add_run("Para calcular la mediana, primero necesitamos encontrar la clase mediana:")
+    p.add_run(f"\n\nTotal de observaciones (n) = {suma_freq}")
+    p.add_run(f"\n\nn/2 = {n_2}")
+    
+    # Frecuencia acumulada para encontrar clase mediana
+    fa_anterior = 0
+    clase_mediana = 1
+    
+    for i, fi in enumerate(central_data["count"], 1):
+        fa = fa_anterior + fi
+        if fa >= n_2:
+            clase_mediana = i
+            break
+        fa_anterior = fa
+    
+    # Límites de la clase mediana
+    li_median, ls_median = limites_central[clase_mediana-1]
+    fi_median = central_data["count"][clase_mediana-1]
+    
+    p.add_run(f"\n\nLa clase mediana es la clase {clase_mediana} con límites [{li_median} - {ls_median})")
+    p.add_run("\n\nAplicando la fórmula para la mediana con datos agrupados:")
+    p.add_run(f"\n\nMediana = li + ((n/2 - Fa_anterior) / fi) × amplitud")
+    p.add_run(f"\n\nMediana = {li_median} + (({n_2} - {fa_anterior}) / {fi_median}) × {ls_median - li_median}")
+    p.add_run(f"\n\nMediana = {mediana}")
+    
+    # Paso 4: Cálculo de la moda
+    doc.add_paragraph("Paso 4: Cálculo de la moda", style='Heading 4')
+    moda = respuestas["tercera_serie"]["medidas_centrales"]["moda"]
+    
+    # Encontrar la clase modal
+    clase_modal = central_data["count"].index(max(central_data["count"])) + 1
+    li_modal, ls_modal = limites_central[clase_modal-1]
+    
+    p = doc.add_paragraph()
+    p.add_run(f"La clase con mayor frecuencia es la clase {clase_modal} con límites [{li_modal} - {ls_modal})")
+    p.add_run("\n\nPara datos agrupados, podemos estimar la moda con mayor precisión usando la fórmula:")
+    p.add_run("\n\nModa = li + (Δ1 / (Δ1 + Δ2)) × amplitud")
+    p.add_run(f"\n\nDonde Δ1 y Δ2 son las diferencias entre la frecuencia de la clase modal y las frecuencias de las clases anterior y posterior, respectivamente.")
+    p.add_run(f"\n\nModa = {moda}")
+    
+    # Paso 5: Interpretación
+    doc.add_paragraph("Paso 5: Interpretación de las medidas de tendencia central", style='Heading 4')
+    
+    p = doc.add_paragraph()
+    p.add_run("Media: ").bold = True
+    p.add_run(f"El valor promedio de los datos es {media}, lo que significa que si todos los valores fueran iguales, cada uno tendría este valor.")
+    
+    p.add_run("\n\nMediana: ").bold = True
+    p.add_run(f"El valor {mediana} divide al conjunto de datos en dos partes iguales: 50% de los datos están por debajo y 50% por encima.")
+    
+    p.add_run("\n\nModa: ").bold = True
+    p.add_run(f"El valor {moda} es el que aparece con mayor frecuencia en el conjunto de datos.")
+    
+    # Guardar documento
+    filename = f'Respuestas_Detalladas_{seccion}_{tipo_evaluacion}_{variante_id}.docx'
+    doc.save(os.path.join(PLANTILLAS_FOLDER, filename))
+    
+    return filename
 
 # Función para crear una hoja de respuestas
 def crear_hoja_respuestas(variante_id):
@@ -950,6 +1596,165 @@ def crear_plantilla_calificacion(variante_id):
     
     return f'Plantilla_{variante_id}.pdf'
 
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def procesar_examen_escaneado(pdf_path, variante_id):
+    try:
+        # Cargar respuestas correctas
+        with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
+            respuestas_correctas = json.load(f)
+            
+        # Convertir PDF a imágenes
+        imagenes = convert_from_path(pdf_path)
+        
+        # Suponiendo que la hoja de respuestas es la primera página
+        if not imagenes:
+            return None
+            
+        img_respuestas = np.array(imagenes[0])
+        
+        # Convertir a escala de grises
+        gray = cv2.cvtColor(img_respuestas, cv2.COLOR_BGR2GRAY)
+        
+        # Aplicar umbral para facilitar detección de círculos
+        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY_INV)
+        
+        # Características de la hoja de respuestas (estos valores deben ajustarse según el diseño)
+        # Posiciones para la primera serie (10 preguntas)
+        primera_serie_y_start = 500  # Posición Y inicial
+        question_height = 80         # Altura entre preguntas
+        
+        # Coordenadas de opciones para cada pregunta (estos son valores aproximados)
+        option_xs = [550, 700, 850, 1000, 1150]  # Posiciones X de los centros de círculos
+        
+        # Extraer respuestas marcadas
+        respuestas_alumno = {
+            "primera_serie": [],
+            "segunda_serie": [],
+            "tercera_serie": {}
+        }
+        
+        # Procesar primera serie
+        for q in range(10):
+            q_y = primera_serie_y_start + (q * question_height)
+            
+            respuesta_pregunta = None
+            for i, opt_x in enumerate(option_xs):
+                # Definir ROI (Region of Interest) alrededor del círculo
+                roi = thresh[q_y-30:q_y+30, opt_x-30:opt_x+30]
+                
+                # Contar píxeles negros en el ROI
+                if roi.size > 0:
+                    black_pixels = np.sum(roi == 255)
+                    
+                    # Si hay suficientes píxeles negros, consideramos que el círculo está marcado
+                    if black_pixels > 200:  # Este umbral debe ajustarse
+                        respuesta_pregunta = i
+                        break
+            
+            respuestas_alumno["primera_serie"].append(respuesta_pregunta)
+        
+        # Procesar segunda serie (similar a la primera)
+        segunda_serie_y_start = primera_serie_y_start + (11 * question_height)
+        
+        for q in range(6):
+            q_y = segunda_serie_y_start + (q * question_height)
+            
+            respuesta_pregunta = None
+            for i, opt_x in enumerate(option_xs):
+                roi = thresh[q_y-30:q_y+30, opt_x-30:opt_x+30]
+                
+                if roi.size > 0:
+                    black_pixels = np.sum(roi == 255)
+                    
+                    if black_pixels > 200:
+                        respuesta_pregunta = i
+                        break
+            
+            respuestas_alumno["segunda_serie"].append(respuesta_pregunta)
+        
+        # Procesar tercera serie usando OCR para reconocer respuestas numéricas
+        # Este es un proceso complejo y probablemente requiera ajustes específicos
+        tercera_serie_y_start = segunda_serie_y_start + (7 * question_height)
+        
+        # Para el coeficiente de Gini
+        gini_y = tercera_serie_y_start
+        gini_roi = gray[gini_y-30:gini_y+30, 900:1300]  # Ajustar coordenadas
+        gini_text = pytesseract.image_to_string(gini_roi, config='--psm 7 -c tessedit_char_whitelist=0123456789.')
+        
+        try:
+            gini_value = float(gini_text.strip())
+        except:
+            gini_value = None
+        
+        respuestas_alumno["tercera_serie"]["gini"] = gini_value
+        
+        # Calcular puntuación
+        puntuacion = calcular_puntuacion(respuestas_alumno, respuestas_correctas)
+        
+        # Extraer información del estudiante (nombre, carné)
+        # Esta parte es avanzada y podría requerir técnicas adicionales de OCR
+        info_estudiante = {
+            "nombre": "Estudiante",
+            "carne": "Carné no detectado"
+        }
+        
+        return {
+            "info_estudiante": info_estudiante,
+            "respuestas": respuestas_alumno,
+            "puntuacion": puntuacion
+        }
+        
+    except Exception as e:
+        print(f"Error al procesar el examen: {str(e)}")
+        return None
+
+def calcular_puntuacion(respuestas_alumno, respuestas_correctas):
+    puntuacion = {
+        "primera_serie": 0,
+        "segunda_serie": 0,
+        "tercera_serie": 0,
+        "total": 0,
+        "convertida_25": 0,
+        "observaciones": []
+    }
+    
+    # Primera serie (40 puntos, 4 puntos por pregunta)
+    for i, (resp_alumno, resp_correcta) in enumerate(zip(respuestas_alumno["primera_serie"], respuestas_correctas["primera_serie"])):
+        if resp_alumno == resp_correcta:
+            puntuacion["primera_serie"] += 4
+    
+    # Segunda serie (20 puntos, ~3.33 puntos por pregunta)
+    for i, (resp_alumno, resp_correcta) in enumerate(zip(respuestas_alumno["segunda_serie"], respuestas_correctas["segunda_serie"])):
+        if resp_alumno == resp_correcta:
+            puntuacion["segunda_serie"] += 3.33
+    
+    puntuacion["segunda_serie"] = round(puntuacion["segunda_serie"], 2)
+    
+    # Tercera serie (40 puntos, 10 puntos por problema)
+    # Coeficiente de Gini
+    gini_alumno = respuestas_alumno["tercera_serie"].get("gini")
+    gini_correcto = respuestas_correctas["tercera_serie"]["gini"]
+    
+    if gini_alumno is not None:
+        if abs(gini_alumno - gini_correcto) <= MARGENES_ERROR['gini']:
+            puntuacion["tercera_serie"] += 10
+        elif abs(gini_alumno - gini_correcto) <= MARGENES_ERROR['gini'] * 2:
+            # Aceptable pero no perfecto
+            puntuacion["tercera_serie"] += 7
+            puntuacion["observaciones"].append("Revisar cálculo del coeficiente de Gini")
+        else:
+            puntuacion["observaciones"].append("Respuesta incorrecta en coeficiente de Gini")
+    else:
+        puntuacion["observaciones"].append("No se pudo detectar respuesta para coeficiente de Gini")
+    
+    # Calcular total y convertir a escala de 25 puntos
+    puntuacion["total"] = puntuacion["primera_serie"] + puntuacion["segunda_serie"] + puntuacion["tercera_serie"]
+    puntuacion["convertida_25"] = round(puntuacion["total"] * 0.25, 2)
+    
+    return puntuacion
+
 # Rutas de la aplicación
 @app.route('/')
 def index():
@@ -974,30 +1779,202 @@ def index():
     
     return render_template('index.html', variantes=variantes)
 
+@app.route('/estudiantes', methods=['GET', 'POST'])
+def gestionar_estudiantes():
+    if request.method == 'POST':
+        action = request.form.get('action')
+        
+        if action == 'agregar':
+            nombre = request.form.get('nombre')
+            carne = request.form.get('carne')
+            seccion = request.form.get('seccion')
+            
+            if nombre and carne and seccion:
+                if seccion not in estudiantes_db:
+                    estudiantes_db[seccion] = []
+                
+                estudiantes_db[seccion].append({
+                    'nombre': nombre,
+                    'carne': carne,
+                    'evaluaciones': {}
+                })
+                
+                flash(f'Estudiante {nombre} agregado correctamente', 'success')
+            else:
+                flash('Datos incompletos', 'danger')
+                
+        elif action == 'cargar_csv':
+            if 'archivo_csv' not in request.files:
+                flash('No se seleccionó archivo CSV', 'danger')
+                return redirect(request.url)
+                
+            archivo = request.files['archivo_csv']
+            seccion = request.form.get('seccion')
+            
+            if archivo.filename == '' or not seccion:
+                flash('Datos incompletos', 'danger')
+                return redirect(request.url)
+                
+            # Procesar archivo CSV
+            try:
+                contenido = archivo.read().decode('utf-8')
+                lineas = contenido.split('\n')
+                
+                if seccion not in estudiantes_db:
+                    estudiantes_db[seccion] = []
+                
+                for linea in lineas[1:]:  # Omitir encabezado
+                    if not linea.strip():
+                        continue
+                        
+                    datos = linea.split(',')
+                    if len(datos) >= 2:
+                        estudiantes_db[seccion].append({
+                            'nombre': datos[0].strip(),
+                            'carne': datos[1].strip(),
+                            'evaluaciones': {}
+                        })
+                
+                flash(f'Se cargaron {len(lineas)-1} estudiantes para la sección {seccion}', 'success')
+            except Exception as e:
+                flash(f'Error al procesar CSV: {str(e)}', 'danger')
+    
+    return render_template('estudiantes.html', estudiantes=estudiantes_db)
+
+@app.route('/calificaciones/<seccion>/<tipo_evaluacion>')
+def ver_calificaciones(seccion, tipo_evaluacion):
+    if seccion not in estudiantes_db:
+        flash(f'La sección {seccion} no existe', 'danger')
+        return redirect(url_for('gestionar_estudiantes'))
+    
+    # Obtener lista de exámenes procesados para esta sección y tipo
+    eval_folder = os.path.join(EXAMENES_ESCANEADOS_FOLDER, f"{seccion}_{tipo_evaluacion}")
+    
+    resultados = {}
+    if os.path.exists(eval_folder):
+        for archivo in os.listdir(eval_folder):
+            if archivo.endswith('.json'):
+                with open(os.path.join(eval_folder, archivo), 'r') as f:
+                    resultado = json.load(f)
+                    carne = resultado.get('info_estudiante', {}).get('carne')
+                    if carne:
+                        resultados[carne] = resultado
+    
+    # Preparar datos para mostrar
+    estudiantes_seccion = estudiantes_db.get(seccion, [])
+    for estudiante in estudiantes_seccion:
+        carne = estudiante.get('carne')
+        if carne in resultados:
+            estudiante['resultado'] = resultados[carne]
+        else:
+            estudiante['resultado'] = None
+    
+    return render_template('calificaciones.html', 
+                          estudiantes=estudiantes_seccion, 
+                          seccion=seccion, 
+                          tipo_evaluacion=tipo_evaluacion)
+
 @app.route('/generar_examen', methods=['POST'])
 def generar_examen():
-    num_variantes = int(request.form.get('num_variantes', 1))
+    form = ExamenForm(request.form)
     
-    variantes_generadas = []
-    
-    for i in range(num_variantes):
-        variante_id = f"V{i+1}"
-        variante, respuestas = generar_variante(variante_id)
+    if form.validate():
+        num_variantes = form.num_variantes.data
+        seccion = form.seccion.data
+        tipo_evaluacion = form.tipo_evaluacion.data
         
-        # Crear documentos
-        examen_filename = crear_examen_word(variante_id)
-        hoja_filename = crear_hoja_respuestas(variante_id)
-        plantilla_filename = crear_plantilla_calificacion(variante_id)
+        # Guardar logo si fue subido
+        logo_path = None
+        if 'logo' in request.files and request.files['logo'].filename != '':
+            logo = request.files['logo']
+            logo_filename = secure_filename(logo.filename)
+            logo_path = os.path.join(UPLOAD_FOLDER, logo_filename)
+            logo.save(logo_path)
         
-        variantes_generadas.append({
-            'id': variante_id,
-            'examen': examen_filename,
-            'hoja': hoja_filename,
-            'plantilla': plantilla_filename
-        })
+        variantes_generadas = []
+        
+        for i in range(num_variantes):
+            variante_id = f"V{i+1}"
+            variante, respuestas = generar_variante(variante_id, seccion, tipo_evaluacion)
+            
+            # Crear documentos
+            examen_filename = crear_examen_word(variante_id, seccion, tipo_evaluacion, logo_path)
+            hoja_filename = crear_hoja_respuestas(variante_id, seccion, tipo_evaluacion)
+            plantilla_filename = crear_plantilla_calificacion(variante_id, seccion, tipo_evaluacion)
+            respuestas_filename = crear_plantilla_calificacion_detallada(variante_id, seccion, tipo_evaluacion)
+            
+            variantes_generadas.append({
+                'id': variante_id,
+                'examen': examen_filename,
+                'hoja': hoja_filename,
+                'plantilla': plantilla_filename,
+                'respuestas': respuestas_filename
+            })
+        
+        flash(f'Se han generado {num_variantes} variantes de examen para la sección {seccion}', 'success')
+        return redirect(url_for('index'))
     
-    flash(f'Se han generado {num_variantes} variantes de examen', 'success')
+    flash('Error en el formulario. Revise los campos.', 'danger')
     return redirect(url_for('index'))
+
+@app.route('/cargar_examenes_escaneados', methods=['GET', 'POST'])
+def cargar_examenes_escaneados():
+    if request.method == 'POST':
+        if 'archivos' not in request.files:
+            flash('No se seleccionaron archivos', 'danger')
+            return redirect(request.url)
+            
+        archivos = request.files.getlist('archivos')
+        seccion = request.form.get('seccion', '')
+        tipo_evaluacion = request.form.get('tipo_evaluacion', '')
+        variante_id = request.form.get('variante_id', '')
+        
+        if not seccion or not tipo_evaluacion or not variante_id:
+            flash('Datos incompletos. Por favor complete todos los campos.', 'danger')
+            return redirect(request.url)
+        
+        # Crear carpeta específica para esta evaluación
+        eval_folder = os.path.join(EXAMENES_ESCANEADOS_FOLDER, f"{seccion}_{tipo_evaluacion}_{variante_id}")
+        if not os.path.exists(eval_folder):
+            os.makedirs(eval_folder)
+        
+        archivos_procesados = []
+        for archivo in archivos:
+            if archivo.filename == '':
+                continue
+                
+            if archivo and allowed_file(archivo.filename, {'pdf'}):
+                filename = secure_filename(archivo.filename)
+                filepath = os.path.join(eval_folder, filename)
+                archivo.save(filepath)
+                
+                # Procesar el archivo
+                resultado = procesar_examen_escaneado(filepath, variante_id)
+                if resultado:
+                    archivos_procesados.append({
+                        'nombre': filename,
+                        'resultado': resultado
+                    })
+        
+        if archivos_procesados:
+            flash(f'Se procesaron {len(archivos_procesados)} exámenes correctamente', 'success')
+            return render_template('resultados_procesamiento.html', 
+                                  archivos=archivos_procesados, 
+                                  seccion=seccion,
+                                  tipo_evaluacion=tipo_evaluacion,
+                                  variante_id=variante_id)
+        else:
+            flash('No se pudo procesar ningún archivo', 'warning')
+            
+    # Obtener variantes disponibles para mostrar en el formulario
+    variantes = []
+    if os.path.exists(VARIANTES_FOLDER):
+        for archivo in os.listdir(VARIANTES_FOLDER):
+            if archivo.startswith('variante_') and archivo.endswith('.json'):
+                variante_id = archivo.replace('variante_', '').replace('.json', '')
+                variantes.append(variante_id)
+    
+    return render_template('cargar_examenes.html', variantes=variantes)
 
 @app.route('/editar_variante/<variante_id>')
 def editar_variante(variante_id):

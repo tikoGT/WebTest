@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Resultados de Procesamiento{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>Resultados del Procesamiento de Exámenes
+                    </h5>
+                    <div>
+                        <a href="{{ url_for('index') }}" class="btn btn-light btn-sm">
+                            <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                        <a href="{{ url_for('ver_calificaciones', seccion=seccion, tipo_evaluacion=tipo_evaluacion) }}" class="btn btn-light btn-sm">
+                            <i class="fas fa-list me-1"></i>Ver Calificaciones
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <p><i class="fas fa-info-circle me-2"></i>Se procesaron <strong>{{ archivos|length }}</strong> exámenes de la sección <strong>{{ seccion }}</strong>, evaluación <strong>{{ tipo_evaluacion }}</strong>, variante <strong>{{ variante_id }}</strong>.</p>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Archivo</th>
+                                <th>Estudiante</th>
+                                <th>Primera Serie</th>
+                                <th>Segunda Serie</th>
+                                <th>Tercera Serie</th>
+                                <th>Total (100 pts)</th>
+                                <th>Total (25 pts)</th>
+                                <th>Observaciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for archivo in archivos %}
+                            <tr>
+                                <td>{{ archivo.nombre }}</td>
+                                <td>
+                                    {{ archivo.resultado.info_estudiante.nombre }}<br>
+                                    <small class="text-muted">{{ archivo.resultado.info_estudiante.carne }}</small>
+                                </td>
+                                <td>{{ archivo.resultado.puntuacion.primera_serie }} / 40</td>
+                                <td>{{ archivo.resultado.puntuacion.segunda_serie }} / 20</td>
+                                <td>{{ archivo.resultado.puntuacion.tercera_serie }} / 40</td>
+                                <td>
+                                    <strong>{{ archivo.resultado.puntuacion.total }}</strong> / 100
+                                </td>
+                                <td>
+                                    <strong>{{ archivo.resultado.puntuacion.convertida_25 }}</strong> / 25
+                                </td>
+                                <td>
+                                    {% if archivo.resultado.puntuacion.observaciones %}
+                                    <ul class="mb-0 ps-3">
+                                        {% for obs in archivo.resultado.puntuacion.observaciones %}
+                                        <li>{{ obs }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span class="text-success">Sin observaciones</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('cargar_examenes_escaneados') }}" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>Cargar Más Exámenes
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-home me-1"></i>Volver al Inicio
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

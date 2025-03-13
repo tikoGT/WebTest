@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Calificaciones - Sección {{ seccion }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-check me-2"></i>Calificaciones - Sección {{ seccion }} - {{ tipo_evaluacion|title }}
+                    </h5>
+                    <div>
+                        <a href="{{ url_for('gestionar_estudiantes') }}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>Volver
+                        </a>
+                        <button onclick="window.print()" class="btn btn-light btn-sm">
+                            <i class="fas fa-print me-1"></i>Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Nombre</th>
+                                <th>Carné</th>
+                                <th>Primera Serie<br><small>(40 pts)</small></th>
+                                <th>Segunda Serie<br><small>(20 pts)</small></th>
+                                <th>Tercera Serie<br><small>(40 pts)</small></th>
+                                <th>Total<br><small>(100 pts)</small></th>
+                                <th>Total<br><small>(25 pts)</small></th>
+                                <th>Observaciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for estudiante in estudiantes %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ estudiante.nombre }}</td>
+                                <td>{{ estudiante.carne }}</td>
+                                {% if estudiante.resultado %}
+                                <td>{{ estudiante.resultado.puntuacion.primera_serie }}</td>
+                                <td>{{ estudiante.resultado.puntuacion.segunda_serie }}</td>
+                                <td>{{ estudiante.resultado.puntuacion.tercera_serie }}</td>
+                                <td><strong>{{ estudiante.resultado.puntuacion.total }}</strong></td>
+                                <td><strong>{{ estudiante.resultado.puntuacion.convertida_25 }}</strong></td>
+                                <td>
+                                    {% if estudiante.resultado.puntuacion.observaciones %}
+                                    <ul class="mb-0 ps-3">
+                                        {% for obs in estudiante.resultado.puntuacion.observaciones %}
+                                        <li>{{ obs }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% else %}
+                                    <span class="text-success">-</span>
+                                    {% endif %}
+                                </td>
+                                {% else %}
+                                <td colspan="6" class="text-center text-danger">
+                                    No se ha procesado examen para este estudiante
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-secondary">
+                                <th colspan="3">Promedio</th>
+                                <td>{{ estudiantes|selectattr('resultado')|map(attribute='resultado.puntuacion.primera_serie')|sum / estudiantes|selectattr('resultado')|list|length|default(1, true) | round(2) }}</td>
+                                <td>{{ estudiantes|selectattr('resultado')|map(attribute='resultado.puntuacion.segunda_serie')|sum / estudiantes|selectattr('resultado')|list|length|default(1, true) | round(2) }}</td>
+                                <td>{{ estudiantes|selectattr('resultado')|map(attribute='resultado.puntuacion.tercera_serie')|sum / estudiantes|selectattr('resultado')|list|length|default(1, true) | round(2) }}</td>
+                                <td>{{ estudiantes|selectattr('resultado')|map(attribute='resultado.puntuacion.total')|sum / estudiantes|selectattr('resultado')|list|length|default(1, true) | round(2) }}</td>
+                                <td>{{ estudiantes|selectattr('resultado')|map(attribute='resultado.puntuacion.convertida_25')|sum / estudiantes|selectattr('resultado')|list|length|default(1, true) | round(2) }}</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('cargar_examenes_escaneados') }}" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>Cargar Más Exámenes
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-home me-1"></i>Volver al Inicio
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    @media print {
+        .navbar, .footer, .btn, .card-header {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 100%;
+            padding: 0;
+        }
+    }
+</style>
+{% endblock %}
