@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Verificación de Generación de Documentos{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-medical-alt me-2"></i>Verificación de Generación de Documentos
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>Esta página realiza pruebas para verificar que el sistema puede generar correctamente los distintos tipos de documentos necesarios para los exámenes.
+                </div>
+                
+                <h4>Resultados de las pruebas</h4>
+                
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tipo de Documento</th>
+                                <th>Estado</th>
+                                <th>Mensaje</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Documento Word (Examen)</td>
+                                <td>
+                                    {% if resultados.examen_word.estado == 'OK' %}
+                                    <span class="badge bg-success">OK</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">ERROR</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ resultados.examen_word.mensaje }}</td>
+                            </tr>
+                            <tr>
+                                <td>PDF (Hoja de Respuestas)</td>
+                                <td>
+                                    {% if resultados.hoja_respuestas.estado == 'OK' %}
+                                    <span class="badge bg-success">OK</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">ERROR</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ resultados.hoja_respuestas.mensaje }}</td>
+                            </tr>
+                            <tr>
+                                <td>PDF (Plantilla de Calificación)</td>
+                                <td>
+                                    {% if resultados.plantilla_calificacion.estado == 'OK' %}
+                                    <span class="badge bg-success">OK</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">ERROR</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ resultados.plantilla_calificacion.mensaje }}</td>
+                            </tr>
+                            <tr>
+                                <td>Documento Word (Solución Matemática)</td>
+                                <td>
+                                    {% if resultados.solucion_matematica.estado == 'OK' %}
+                                    <span class="badge bg-success">OK</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">ERROR</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ resultados.solucion_matematica.mensaje }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-4">
+                    <h4>Soluciones a problemas comunes:</h4>
+                    
+                    <div class="accordion" id="solucionesAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                    Problemas con documentos Word (python-docx)
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#solucionesAccordion">
+                                <div class="accordion-body">
+                                    <ol>
+                                        <li>Verifique que python-docx está correctamente instalado: <code>pip install python-docx</code></li>
+                                        <li>Asegúrese de que tiene permisos de escritura en la carpeta de exámenes</li>
+                                        <li>Si aparecen errores de estilos o formato, es posible que la versión de python-docx sea incompatible. Intente actualizar: <code>pip install --upgrade python-docx</code></li>
+                                        <li>Si está usando una plantilla (.docx), verifique que el archivo no esté dañado y sea compatible con python-docx</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    Problemas con PDFs (Pillow/PIL)
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#solucionesAccordion">
+                                <div class="accordion-body">
+                                    <ol>
+                                        <li>Verifique que Pillow está correctamente instalado: <code>pip install Pillow</code></li>
+                                        <li>Si tiene problemas con fuentes, asegúrese de que las fuentes mencionadas están disponibles en el sistema o modifique el código para usar fuentes disponibles</li>
+                                        <li>Para problemas de memoria, reduzca la resolución de las imágenes generadas</li>
+                                        <li>Si hay errores al dibujar texto, asegúrese de que el texto no contiene caracteres no soportados</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    Problemas generales y de permisos
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#solucionesAccordion">
+                                <div class="accordion-body">
+                                    <ol>
+                                        <li>Reinicie la aplicación Flask para liberar archivos que puedan estar bloqueados</li>
+                                        <li>Verifique que todas las carpetas necesarias existen y tienen permisos de escritura</li>
+                                        <li>Revise los log de errores para mensajes específicos</li>
+                                        <li>Ejecute <code>pip install -r requirements.txt</code> para asegurarse de que todas las dependencias están instaladas</li>
+                                        <li>Si usa Windows, ejecute la aplicación como administrador</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('diagnostico') }}" class="btn btn-secondary">
+                        <i class="fas fa-stethoscope me-1"></i>Ejecutar Diagnóstico General
+                    </a>
+                    <a href="{{ url_for('verificar_generacion_documentos') }}" class="btn btn-primary">
+                        <i class="fas fa-sync me-1"></i>Ejecutar Pruebas Nuevamente
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

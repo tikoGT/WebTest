@@ -35,19 +35,31 @@
                                 <td>{{ item.tipo_texto }}</td>
                                 <td>{{ item.id }}</td>
                                 <td>
+                                    {% if item.examen and item.examen != 'null' and item.examen != 'None' %}
                                     <a href="{{ url_for('descargar_archivo', tipo='examen', filename=item.examen) }}" class="btn btn-sm btn-primary">
                                         <i class="fas fa-download me-1"></i>Descargar
                                     </a>
+                                    {% else %}
+                                    <span class="badge bg-secondary">No disponible</span>
+                                    {% endif %}
                                 </td>
                                 <td>
+                                    {% if item.hoja and item.hoja != 'null' and item.hoja != 'None' %}
                                     <a href="{{ url_for('descargar_archivo', tipo='hoja', filename=item.hoja) }}" class="btn btn-sm btn-info">
                                         <i class="fas fa-download me-1"></i>Descargar
                                     </a>
+                                    {% else %}
+                                    <span class="badge bg-secondary">No disponible</span>
+                                    {% endif %}
                                 </td>
                                 <td>
+                                    {% if item.plantilla and item.plantilla != 'null' and item.plantilla != 'None' %}
                                     <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename=item.plantilla) }}" class="btn btn-sm btn-warning">
                                         <i class="fas fa-download me-1"></i>Descargar
                                     </a>
+                                    {% else %}
+                                    <span class="badge bg-secondary">No disponible</span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
@@ -57,6 +69,10 @@
                                         <a href="{{ url_for('descargar_todo', id_examen=item.id) }}" class="btn btn-sm btn-secondary">
                                             <i class="fas fa-download me-1"></i>Todo
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="confirmarEliminacion('{{ item.id }}')">
+                                            <i class="fas fa-trash me-1"></i>Eliminar
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -73,4 +89,42 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">Confirmar eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea eliminar la variante <strong id="deleteVariantId"></strong> y todos sus archivos asociados?</p>
+                <p>Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteForm" action="" method="post">
+                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmarEliminacion(varianteId) {
+        // Actualizar el ID en el mensaje de confirmación
+        document.getElementById('deleteVariantId').textContent = varianteId;
+        
+        // Actualizar el action del formulario
+        document.getElementById('deleteForm').action = "{{ url_for('eliminar_variante', variante_id='') }}" + varianteId;
+        
+        // Mostrar el modal
+        var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        deleteModal.show();
+    }
+</script>
 {% endblock %}

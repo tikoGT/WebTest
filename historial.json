@@ -1,134 +1,15 @@
 [
   {
     "id": "V1",
-    "seccion": "S707",
+    "seccion": "M1",
     "tipo_evaluacion": "parcial1",
     "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:18",
-    "examen": "Examen_A_parcial1_V1.docx",
-    "hoja": "HojaRespuestas_V1.pdf",
-    "plantilla": "Plantilla_V1.pdf"
-  },
-  {
-    "id": "V2",
-    "seccion": "S707",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:18",
-    "examen": "Examen_A_parcial1_V2.docx",
-    "hoja": "HojaRespuestas_V2.pdf",
-    "plantilla": "Plantilla_V2.pdf"
-  },
-  {
-    "id": "V3",
-    "seccion": "S707",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:18",
-    "examen": "Examen_A_parcial1_V3.docx",
-    "hoja": "HojaRespuestas_V3.pdf",
-    "plantilla": "Plantilla_V3.pdf"
-  },
-  {
-    "id": "V1",
-    "seccion": "S609",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:19",
-    "examen": "Examen_A_parcial1_V1.docx",
-    "hoja": "HojaRespuestas_V1.pdf",
-    "plantilla": "Plantilla_V1.pdf"
-  },
-  {
-    "id": "V2",
-    "seccion": "S609",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:19",
-    "examen": "Examen_A_parcial1_V2.docx",
-    "hoja": "HojaRespuestas_V2.pdf",
-    "plantilla": "Plantilla_V2.pdf"
-  },
-  {
-    "id": "V3",
-    "seccion": "S609",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:19",
-    "examen": "Examen_A_parcial1_V3.docx",
-    "hoja": "HojaRespuestas_V3.pdf",
-    "plantilla": "Plantilla_V3.pdf"
-  },
-  {
-    "id": "V1",
-    "seccion": "S707",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:35",
-    "examen": "Examen_A_parcial1_V1.docx",
+    "fecha_generacion": "13/03/2025 21:33",
+    "timestamp": "20250313_213352",
+    "directorio": "M1_parcial1_20250313_213352",
+    "examen": "Examen_V1.docx",
     "hoja": "HojaRespuestas_V1.pdf",
     "plantilla": "Plantilla_V1.pdf",
-    "solucion_matematica": "Solucion_Matematica_S707_parcial1_V1.pdf"
-  },
-  {
-    "id": "V1",
-    "seccion": "S707",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 15:45",
-    "examen": "Examen_S707_parcial1_V1.docx",
-    "hoja": "HojaRespuestas_V1.pdf",
-    "plantilla": "Plantilla_V1.pdf",
-    "solucion_matematica": "Solucion_Matematica_S707_parcial1_V1.docx"
-  },
-  {
-    "id": "V1",
-    "seccion": "S609",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 16:02",
-    "examen": "Examen_A_parcial1_V1.docx",
-    "hoja": "HojaRespuestas_V1.pdf",
-    "plantilla": "Plantilla_V1.pdf",
-    "solucion_matematica": "Solucion_Matematica_S609_parcial1_V1.pdf"
-  },
-  {
-    "id": "V1",
-    "seccion": "S707",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 16:32",
-    "timestamp": "20250313_163206",
-    "directorio": "S707_parcial1_20250313_163206",
-    "examen": null,
-    "hoja": "HojaRespuestas_S707_parcial1_V1.pdf",
-    "plantilla": "Plantilla_S707_parcial1_V1.pdf",
-    "solucion_matematica": "Solucion_Matematica_S707_parcial1_V1.docx"
-  },
-  {
-    "id": "V2",
-    "seccion": "S707",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 16:32",
-    "timestamp": "20250313_163206",
-    "directorio": "S707_parcial1_20250313_163206",
-    "examen": null,
-    "hoja": "HojaRespuestas_S707_parcial1_V2.pdf",
-    "plantilla": "Plantilla_S707_parcial1_V2.pdf",
-    "solucion_matematica": "Solucion_Matematica_S707_parcial1_V2.docx"
-  },
-  {
-    "id": "V3",
-    "seccion": "S707",
-    "tipo_evaluacion": "parcial1",
-    "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "13/03/2025 16:32",
-    "timestamp": "20250313_163206",
-    "directorio": "S707_parcial1_20250313_163206",
-    "examen": null,
-    "hoja": "HojaRespuestas_S707_parcial1_V3.pdf",
-    "plantilla": "Plantilla_S707_parcial1_V3.pdf",
-    "solucion_matematica": "Solucion_Matematica_S707_parcial1_V3.docx"
+    "solucion_matematica": "Solucion_Matematica_V1.docx"
   }
 ]

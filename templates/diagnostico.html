@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Diagnóstico del Sistema{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-stethoscope me-2"></i>Diagnóstico del Sistema de Generación de Exámenes
+                </h5>
+            </div>
+            <div class="card-body">
+                <h3>Estado General: 
+                    {% if resultados.estado_general == 'OK' %}
+                    <span class="badge bg-success">OK</span>
+                    {% else %}
+                    <span class="badge bg-danger">ERROR</span>
+                    {% endif %}
+                </h3>
+                
+                <p>Versión de Python: {{ resultados.python_version }}</p>
+                
+                <h4>Dependencias</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Dependencia</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dep, estado in resultados.dependencias.items() %}
+                            <tr>
+                                <td>{{ dep }}</td>
+                                <td>
+                                    {% if estado %}
+                                    <span class="badge bg-success">Instalada</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">No instalada</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <h4>Directorios y Permisos</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Directorio</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for dir, estado in resultados.directorios.items() %}
+                            <tr>
+                                <td>{{ dir }}</td>
+                                <td>
+                                    {% if estado == True %}
+                                    <span class="badge bg-success">OK</span>
+                                    {% elif estado == "Creado" %}
+                                    <span class="badge bg-warning">Creado durante diagnóstico</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">{{ estado }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4">
+                    <h4>Solución a problemas comunes:</h4>
+                    <ul>
+                        <li><strong>Dependencias faltantes:</strong> Ejecute <code>pip install -r requirements.txt</code> para instalar todas las dependencias.</li>
+                        <li><strong>Problemas de permisos:</strong> Asegúrese de que el usuario que ejecuta la aplicación tenga permisos de escritura en todos los directorios.</li>
+                        <li><strong>No se generan documentos Word:</strong> Verifique que python-docx esté instalado correctamente y que exista la carpeta de exámenes.</li>
+                        <li><strong>No se generan PDFs:</strong> Verifique que Pillow esté instalado correctamente.</li>
+                    </ul>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Volver al Inicio
+                    </a>
+                    <a href="{{ url_for('diagnostico') }}" class="btn btn-primary">
+                        <i class="fas fa-sync me-1"></i>Ejecutar Diagnóstico Nuevamente
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

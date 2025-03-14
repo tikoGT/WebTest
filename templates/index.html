@@ -80,66 +80,67 @@
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            {% for variante in variantes %}
-                            <tr>
-                                <td>{{ variante.id }}</td>
-                                <td>{{ variante.seccion }}</td>
-                                <td>{{ variante.tipo_evaluacion }}</td>
-                                <td>
-                                    {% if variante.tiene_examen %}
-                                    <a href="{{ url_for('descargar_archivo', tipo='examen', filename='Examen_' + variante.id + '.docx') }}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-download me-1"></i>Descargar
-                                    </a>
-                                    {% else %}
-                                    <span class="badge bg-danger">No disponible</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if variante.tiene_hoja %}
-                                    <a href="{{ url_for('descargar_archivo', tipo='hoja', filename='HojaRespuestas_' + variante.id + '.pdf') }}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-download me-1"></i>Descargar
-                                    </a>
-                                    {% else %}
-                                    <span class="badge bg-danger">No disponible</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if variante.tiene_plantilla %}
-                                    <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename='Plantilla_' + variante.id + '.pdf') }}" class="btn btn-sm btn-warning">
-                                        <i class="fas fa-download me-1"></i>Descargar
-                                    </a>
-                                    {% else %}
-                                    <span class="badge bg-danger">No disponible</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if variante.tiene_solucion %}
-                                    <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename=variante.solucion_matematica) }}" class="btn btn-sm btn-success">
-                                        <i class="fas fa-calculator me-1"></i>Descargar
-                                    </a>
-                                    {% else %}
-                                    <span class="badge bg-danger">No disponible</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <a href="{{ url_for('previsualizar', variante_id=variante.id) }}" class="btn btn-sm btn-success">
-                                            <i class="fas fa-eye me-1"></i>Vista Previa
+                        <!-- Replace the table rows section in index.html with this code -->
+
+                            <tbody>
+                                {% for variante in variantes %}
+                                <tr>
+                                    <td>{{ variante.id }}</td>
+                                    <td>{{ variante.seccion }}</td>
+                                    <td>{{ variante.tipo_evaluacion }}</td>
+                                    <td>
+                                        {% if variante.tiene_examen %}
+                                        <a href="{{ url_for('descargar_archivo', tipo='examen', filename='Examen_' + variante.id + '.docx') }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-download me-1"></i>Descargar
                                         </a>
-                                        <a href="{{ url_for('descargar_todo', id_examen=variante.id) }}" class="btn btn-sm btn-secondary">
-                                            <i class="fas fa-download me-1"></i>Todo
+                                        {% else %}
+                                        <span class="badge bg-danger">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if variante.tiene_hoja %}
+                                        <a href="{{ url_for('descargar_archivo', tipo='hoja', filename='HojaRespuestas_' + variante.id + '.pdf') }}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-download me-1"></i>Descargar
                                         </a>
-                                        <form action="{{ url_for('eliminar_variante', variante_id=variante.id) }}" method="post" onsubmit="return confirm('¿Estás seguro que deseas eliminar esta variante?');" class="d-inline">
-                                            <button type="submit" class="btn btn-sm btn-danger">
+                                        {% else %}
+                                        <span class="badge bg-danger">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if variante.tiene_plantilla %}
+                                        <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename='Plantilla_' + variante.id + '.pdf') }}" class="btn btn-sm btn-warning">
+                                            <i class="fas fa-download me-1"></i>Descargar
+                                        </a>
+                                        {% else %}
+                                        <span class="badge bg-danger">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if variante.tiene_solucion %}
+                                        <a href="{{ url_for('descargar_archivo', tipo='plantilla', filename=variante.solucion_matematica) }}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-calculator me-1"></i>Descargar
+                                        </a>
+                                        {% else %}
+                                        <span class="badge bg-danger">No disponible</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('previsualizar', variante_id=variante.id) }}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-eye me-1"></i>Vista Previa
+                                            </a>
+                                            <a href="{{ url_for('descargar_todo', id_examen=variante.id) }}" class="btn btn-sm btn-secondary">
+                                                <i class="fas fa-download me-1"></i>Todo
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger" 
+                                                    onclick="confirmarEliminacion('{{ variante.id }}')">
                                                 <i class="fas fa-trash me-1"></i>
                                             </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
                     </table>
                 </div>
                 <div class="mt-3">
