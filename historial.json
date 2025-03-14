@@ -16,5 +16,23 @@
     "nombre_docente": "",
     "anio": "",
     "salon": ""
+  },
+  {
+    "id": "V1",
+    "seccion": "AAA",
+    "tipo_evaluacion": "parcial1",
+    "tipo_texto": "Primer Parcial",
+    "fecha_generacion": "14/03/2025 01:17",
+    "timestamp": "20250314_011658",
+    "directorio": "AAA_parcial1_20250314_011658",
+    "examen": "Examen_V1.docx",
+    "hoja": "HojaRespuestas_V1.pdf",
+    "plantilla": "Plantilla_V1.pdf",
+    "solucion_matematica": "Solucion_Matematica_Detallada_V1.docx",
+    "licenciatura": "",
+    "nombre_curso": "",
+    "nombre_docente": "",
+    "anio": "",
+    "salon": ""
   }
 ]
