@@ -713,621 +713,7 @@ def generar_variante(variante_id="V1", seccion="A", tipo_evaluacion="parcial1"):
     
     return variante, respuestas
 
-# Función para crear examen de Word a partir de una variante
-def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo_path=None, plantilla_path=None, 
-                  licenciatura="", nombre_curso="Estadística Básica", nombre_docente="Ing. Marco Antonio Jiménez", 
-                  anio="2025", salon=""):
-    """
-    Crea documento de examen con logo y usando plantilla opcional
-    Soporta reemplazo de placeholders para personalización
-    """
-    try:
-        print(f"\n===== INICIANDO CREACIÓN DE EXAMEN WORD =====")
-        print(f"Parámetros: variante_id={variante_id}, seccion={seccion}, tipo_evaluacion={tipo_evaluacion}")
-        print(f"Logo path: {logo_path}")
-        print(f"Plantilla path: {plantilla_path}")
-        
-        # Importar Document aquí para asegurarse de que está disponible
-        from docx import Document
-        from docx.shared import Pt, Inches, RGBColor
-        from docx.enum.text import WD_ALIGN_PARAGRAPH
-        from docx.enum.table import WD_TABLE_ALIGNMENT
-        from docx.enum.style import WD_STYLE_TYPE
-        
-        # Cargar la variante
-        try:
-            with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
-                variante = json.load(f)
-                print(f"Variante cargada correctamente: {variante_id}")
-        except Exception as e:
-            print(f"Error al cargar variante: {str(e)}")
-            variante = {
-                "primera_serie": [],
-                "segunda_serie": [],
-                "tercera_serie": []
-            }
-        
-        # Generar carpeta con timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = os.path.join(EXAMENES_FOLDER, f'{seccion}_{tipo_evaluacion}_{timestamp}')
-        os.makedirs(output_dir, exist_ok=True)
-        print(f"Carpeta de salida creada: {output_dir}")
-        
-        # Verificar plantilla y su formato
-        use_template = False
-        if plantilla_path and os.path.exists(plantilla_path):
-            print(f"Plantilla encontrada: {plantilla_path}")
-            
-            # Detectar si es una plantilla con placeholders o una plantilla de formato general
-            try:
-                # Intentar abrir la plantilla para verificar que es un archivo .docx válido
-                doc_temp = Document(plantilla_path)
-                
-                # Buscar placeholders en la plantilla
-                has_placeholders = False
-                for paragraph in doc_temp.paragraphs:
-                    if any(marker in paragraph.text for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}', '{variante}']):
-                        has_placeholders = True
-                        break
-                
-                # También buscar en tablas
-                if not has_placeholders:
-                    for table in doc_temp.tables:
-                        for row in table.rows:
-                            for cell in row.cells:
-                                for paragraph in cell.paragraphs:
-                                    if any(marker in paragraph.text for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}', '{variante}']):
-                                        has_placeholders = True
-                                        break
-                                if has_placeholders:
-                                    break
-                            if has_placeholders:
-                                break
-                        if has_placeholders:
-                            break
-                
-                if has_placeholders:
-                    print("Plantilla con placeholders detectada. Utilizando procesamiento especial.")
-                    doc = procesar_plantilla_examen(
-                        plantilla_path, 
-                        variante_id, 
-                        seccion, 
-                        tipo_evaluacion, 
-                        variante,
-                        licenciatura,
-                        nombre_curso,
-                        nombre_docente,
-                        anio,
-                        salon
-                    )
-                    
-                    if doc:
-                        use_template = True
-                        print("Plantilla procesada correctamente con reemplazo de placeholders.")
-                    else:
-                        print("Error al procesar plantilla con placeholders. Creando examen estándar.")
-                        doc = Document()
-                else:
-                    print("Plantilla sin placeholders detectada. Usando como base de formato.")
-                    doc = Document(plantilla_path)
-                    use_template = True
-            except Exception as e:
-                print(f"Error al analizar plantilla: {str(e)}")
-                print(f"Se creará un documento nuevo en su lugar")
-                doc = Document()
-        else:
-            print(f"No se encontró plantilla. Se creará un documento nuevo.")
-            doc = Document()
-        
-        # Si estamos usando una plantilla con placeholders ya procesada, solo guardamos y terminamos
-        if use_template and 'doc' in locals() and doc and any(marker in paragraph.text for paragraph in doc.paragraphs 
-                                                           for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}']):
-            # No es necesario añadir contenido, ya fue reemplazado en procesar_plantilla_examen
-            print("Usando plantilla con placeholders ya procesados.")
-        else:
-            # Continuar con el proceso normal de creación/llenado de documento
-            # Crear o verificar los estilos necesarios
-            styles = doc.styles
-            
-            # Verificar/crear estilos básicos de encabezado
-            style_names = [s.name for s in styles]
-            
-            # Crear Heading 1 si no existe
-            if 'Heading 1' not in style_names:
-                try:
-                    heading1 = styles.add_style('Heading 1', WD_STYLE_TYPE.PARAGRAPH)
-                    heading1.font.bold = True
-                    heading1.font.size = Pt(18)
-                    print("Estilo 'Heading 1' creado")
-                except Exception as e:
-                    print(f"Error al crear estilo 'Heading 1': {str(e)}")
-                    # Crear un estilo alternativo
-                    if 'Title' in style_names:
-                        heading1 = styles['Title']
-                        print("Usando estilo 'Title' como alternativa")
-                    else:
-                        # Si no hay alternativa, crear un estilo personalizado
-                        heading1 = styles.add_style('CustomHeading1', WD_STYLE_TYPE.PARAGRAPH)
-                        heading1.font.bold = True
-                        heading1.font.size = Pt(18)
-                        print("Estilo 'CustomHeading1' creado como alternativa")
-            
-            # Crear Heading 2 si no existe
-            if 'Heading 2' not in style_names:
-                try:
-                    heading2 = styles.add_style('Heading 2', WD_STYLE_TYPE.PARAGRAPH)
-                    heading2.font.bold = True
-                    heading2.font.size = Pt(16)
-                    print("Estilo 'Heading 2' creado")
-                except Exception as e:
-                    print(f"Error al crear estilo 'Heading 2': {str(e)}")
-                    # Crear un estilo alternativo
-                    if 'Subtitle' in style_names:
-                        heading2 = styles['Subtitle']
-                        print("Usando estilo 'Subtitle' como alternativa")
-                    else:
-                        # Si no hay alternativa, crear un estilo personalizado
-                        heading2 = styles.add_style('CustomHeading2', WD_STYLE_TYPE.PARAGRAPH)
-                        heading2.font.bold = True
-                        heading2.font.size = Pt(16)
-                        print("Estilo 'CustomHeading2' creado como alternativa")
-            
-            # Crear List Bullet si no existe
-            if 'List Bullet' not in style_names:
-                try:
-                    list_bullet = styles.add_style('List Bullet', WD_STYLE_TYPE.PARAGRAPH)
-                    list_bullet.font.size = Pt(12)
-                    print("Estilo 'List Bullet' creado")
-                except Exception as e:
-                    print(f"Error al crear estilo 'List Bullet': {str(e)}")
-                    # Crear un estilo personalizado
-                    list_bullet = styles.add_style('CustomListBullet', WD_STYLE_TYPE.PARAGRAPH)
-                    list_bullet.font.size = Pt(12)
-                    print("Estilo 'CustomListBullet' creado como alternativa")
-            
-            # Verificar/crear estilo 'TitleStyle'
-            try:
-                if 'TitleStyle' not in style_names:
-                    title_style = styles.add_style('TitleStyle', WD_STYLE_TYPE.PARAGRAPH)
-                    title_style.font.bold = True
-                    title_style.font.size = Pt(16)
-                    print("Estilo 'TitleStyle' creado")
-                    
-                # Verificar/crear estilo 'SubtitleStyle'
-                if 'SubtitleStyle' not in style_names:
-                    subtitle_style = styles.add_style('SubtitleStyle', WD_STYLE_TYPE.PARAGRAPH)
-                    subtitle_style.font.italic = True
-                    subtitle_style.font.size = Pt(12)
-                    print("Estilo 'SubtitleStyle' creado")
-            except Exception as e:
-                print(f"Error al crear estilos: {str(e)}")
-                print("Continuando con estilos predeterminados...")
-            
-            # Configurar márgenes
-            try:
-                sections = doc.sections
-                for section in sections:
-                    section.top_margin = Inches(0.7)
-                    section.bottom_margin = Inches(0.7)
-                    section.left_margin = Inches(0.8)
-                    section.right_margin = Inches(0.8)
-                print("Márgenes configurados")
-            except Exception as e:
-                print(f"Error al configurar márgenes: {str(e)}")
-                print("Continuando con márgenes predeterminados...")
-                
-            # Encabezado con tabla
-            try:
-                header_table = doc.add_table(rows=1, cols=2)
-                header_table.style = 'Table Grid'
-                
-                # Celda para logo
-                logo_cell = header_table.cell(0, 0)
-                logo_paragraph = logo_cell.paragraphs[0]
-                
-                # Verificar que el logo existe y añadirlo
-                if logo_path and os.path.exists(logo_path):
-                    try:
-                        logo_paragraph.add_run().add_picture(logo_path, width=Inches(1.0))
-                        print(f"Logo añadido desde {logo_path}")
-                    except Exception as e:
-                        print(f"Error al añadir logo: {str(e)}")
-                        logo_paragraph.text = "LOGO"
-                else:
-                    print(f"Logo no encontrado en {logo_path}")
-                    logo_paragraph.text = "LOGO"
-            
-                # Celda para título
-                title_cell = header_table.cell(0, 1)
-                
-                # Título Universidad
-                try:
-                    # Usar campos desde parameters o predeterminados
-                    univ_para = title_cell.add_paragraph('Universidad Panamericana')
-                    try:
-                        univ_para.style = 'TitleStyle'
-                    except:
-                        # Si falla al aplicar el estilo, aplicar formato directamente
-                        for run in univ_para.runs:
-                            run.bold = True
-                            run.font.size = Pt(16)
-                    univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                except Exception as e:
-                    print(f"Error al aplicar estilo TitleStyle: {str(e)}")
-                    univ_para = title_cell.add_paragraph('Universidad Panamericana')
-                    univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in univ_para.runs:
-                        run.bold = True
-                        run.font.size = Pt(16)
-                
-                # Facultad y curso con placeholders
-                try:
-                    headers = [
-                        f'Facultad de {licenciatura or "Humanidades"}',
-                        f'{nombre_curso or "Estadística Básica"} - Sección {seccion}',
-                        f'{nombre_docente or "Ing. Marco Antonio Jiménez"}',
-                        f'{anio or "2025"}'
-                    ]
-                    
-                    for header_text in headers:
-                        header = title_cell.add_paragraph(header_text)
-                        try:
-                            header.style = 'SubtitleStyle'
-                        except:
-                            # Si falla al aplicar el estilo, aplicar formato directamente
-                            for run in header.runs:
-                                run.italic = True
-                                run.font.size = Pt(12)
-                        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                except Exception as e:
-                    print(f"Error al aplicar estilo SubtitleStyle: {str(e)}")
-                    for header_text in headers:
-                        header = title_cell.add_paragraph(header_text)
-                        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                        for run in header.runs:
-                            run.italic = True
-                            run.font.size = Pt(12)
-            except Exception as e:
-                print(f"Error al crear encabezado: {str(e)}")
-                doc.add_paragraph('Universidad Panamericana').bold = True
-                doc.add_paragraph(f'Facultad de {licenciatura or "Humanidades"}')
-                doc.add_paragraph(f'{nombre_curso or "Estadística Básica"} - Sección {seccion}')
-                
-            # Título del examen
-            try:
-                tipo_eval_textos = {
-                    'parcial1': 'Primer Examen Parcial',
-                    'parcial2': 'Segundo Examen Parcial',
-                    'final': 'Examen Final',
-                    'corto': 'Evaluación Corta',
-                    'recuperacion': 'Examen de Recuperación',
-                    'test': 'Prueba de Evaluación'
-                }
-                
-                tipo_texto = tipo_eval_textos.get(tipo_evaluacion, 'Evaluación Parcial')
-                
-                # Intentar añadir con Heading 1
-                try:
-                    exam_title = doc.add_heading(f'{tipo_texto} ({variante_id})', 1)
-                    exam_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                except Exception as e:
-                    print(f"Error al usar Heading 1: {str(e)}")
-                    # Alternativa usando párrafo normal
-                    p = doc.add_paragraph(f'{tipo_texto} ({variante_id})')
-                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in p.runs:
-                        run.bold = True
-                        run.font.size = Pt(18)
-                
-                # Añadir salón si se proporcionó
-                if salon:
-                    salon_text = doc.add_paragraph(f"Salón: {salon}")
-                    salon_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            except Exception as e:
-                print(f"Error al añadir título del examen: {str(e)}")
-                p = doc.add_paragraph(f'{tipo_eval_textos.get(tipo_evaluacion, "Evaluación Parcial")} ({variante_id})')
-                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for run in p.runs:
-                    run.bold = True
-                    run.font.size = Pt(14)
-            
-            # Información del estudiante
-            doc.add_paragraph()
-            student_info = doc.add_paragraph('Nombre del estudiante: _____________________________________________________________')
-            
-            info_line = doc.add_paragraph()
-            info_line.add_run('Fecha: ____________________ ')
-            info_line.add_run('Carné: ___________________ ')
-            info_line.add_run('Firma: ________________________')
-            
-            doc.add_paragraph()
-            
-            # Primera serie
-            try:
-                # Intentar añadir con Heading 2
-                try:
-                    serie1 = doc.add_heading('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)', 2)
-                except Exception as e:
-                    print(f"Error al usar Heading 2: {str(e)}")
-                    # Alternativa usando párrafo normal
-                    serie1 = doc.add_paragraph('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)')
-                    for run in serie1.runs:
-                        run.bold = True
-                        run.font.size = Pt(16)
-                
-                instructions = doc.add_paragraph()
-                instructions.add_run('Instrucciones: ').bold = True
-                instructions.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta. Subraye con lapicero la opción u opciones que considere correcta(s) para cada pregunta. Las respuestas hechas con lápiz no serán aceptadas como válidas.')
-            except Exception as e:
-                print(f"Error al añadir encabezado de primera serie: {str(e)}")
-                doc.add_paragraph('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)')
-                p = doc.add_paragraph()
-                p.add_run('Instrucciones: ').bold = True
-                p.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta...')
-                
-            # Preguntas de la primera serie
-            try:
-                if "primera_serie" in variante and variante["primera_serie"]:
-                    for i, pregunta in enumerate(variante["primera_serie"], 1):
-                        question_para = doc.add_paragraph()
-                        question_para.add_run(f"{i}. {pregunta['pregunta']}").bold = True
-                        
-                        for opcion in pregunta.get("opciones", []):
-                            try:
-                                # Intentar usar estilo List Bullet
-                                option_para = doc.add_paragraph(style='List Bullet')
-                                option_para.add_run(opcion)
-                            except Exception as e:
-                                print(f"Error al usar estilo List Bullet: {str(e)}")
-                                # Alternativa usando párrafo normal con viñeta manual
-                                option_para = doc.add_paragraph()
-                                option_para.add_run(f"• {opcion}")
-                                option_para.paragraph_format.left_indent = Inches(0.25)
-                    
-                    doc.add_paragraph()
-                else:
-                    error_p = doc.add_paragraph()
-                    error_p.add_run("Error: No se encontraron preguntas para la primera serie.").italic = True
-                    doc.add_paragraph()
-            except Exception as e:
-                print(f"Error al añadir preguntas de la primera serie: {str(e)}")
-                doc.add_paragraph("Error al cargar preguntas de la primera serie.")
-                
-            # Segunda serie
-            try:
-                # Intentar añadir con Heading 2
-                try:
-                    serie2 = doc.add_heading('Segunda serie (Valor de cada respuesta correcta 3 puntos. Valor total de la serie 20 puntos)', 2)
-                except Exception as e:
-                    print(f"Error al usar Heading 2: {str(e)}")
-                    # Alternativa usando párrafo normal
-                    serie2 = doc.add_paragraph('Segunda serie (Valor de cada respuesta correcta 3 puntos. Valor total de la serie 20 puntos)')
-                    for run in serie2.runs:
-                        run.bold = True
-                        run.font.size = Pt(16)
-                
-                instructions2 = doc.add_paragraph()
-                instructions2.add_run('Instrucciones: ').bold = True
-                instructions2.add_run('Para cada uno de los siguientes escenarios, identifique qué tipo de gráfica sería más apropiada para representar los datos y explique brevemente por qué. Las opciones son: Gráfica de barras, Gráfica circular (pastel), Histograma de Pearson, Ojiva de Galton o Polígono de frecuencias.')
-                
-                # Escenarios de la segunda serie
-                if "segunda_serie" in variante and variante["segunda_serie"]:
-                    for i, escenario in enumerate(variante["segunda_serie"], 1):
-                        escenario_para = doc.add_paragraph()
-                        escenario_para.add_run(f"{i}. {escenario.get('escenario', '')}").bold = True
-                        
-                        for opcion in escenario.get("opciones", []):
-                            try:
-                                # Intentar usar estilo List Bullet
-                                option_para = doc.add_paragraph(style='List Bullet')
-                                option_para.add_run(opcion)
-                            except Exception as e:
-                                print(f"Error al usar estilo List Bullet: {str(e)}")
-                                # Alternativa usando párrafo normal con viñeta manual
-                                option_para = doc.add_paragraph()
-                                option_para.add_run(f"• {opcion}")
-                                option_para.paragraph_format.left_indent = Inches(0.25)
-                        
-                        doc.add_paragraph()
-                else:
-                    error_p = doc.add_paragraph()
-                    error_p.add_run("Error: No se encontraron escenarios para la segunda serie.").italic = True
-                    doc.add_paragraph()
-            except Exception as e:
-                print(f"Error al añadir preguntas de la segunda serie: {str(e)}")
-                doc.add_paragraph("Error al cargar preguntas de la segunda serie.")
-                
-            # Tercera serie
-            try:
-                # Intentar añadir con Heading 2
-                try:
-                    serie3 = doc.add_heading('Tercera serie (Valor de cada respuesta correcta 10 puntos. Valor total de la serie 40 puntos)', 2)
-                except Exception as e:
-                    print(f"Error al usar Heading 2: {str(e)}")
-                    # Alternativa usando párrafo normal
-                    serie3 = doc.add_paragraph('Tercera serie (Valor de cada respuesta correcta 10 puntos. Valor total de la serie 40 puntos)')
-                    for run in serie3.runs:
-                        run.bold = True
-                        run.font.size = Pt(16)
-                
-                instructions3 = doc.add_paragraph()
-                instructions3.add_run('Instrucciones: ').bold = True
-                instructions3.add_run('Desarrollar los ejercicios, dejando respaldo de sus operaciones. Asegúrese de escribir su respuesta final con lapicero; no se aceptarán respuestas escritas con lápiz. Mantenga su trabajo organizado y legible.')
-                
-                # Verifica que tercera_serie esté presente
-                if "tercera_serie" not in variante or not variante["tercera_serie"]:
-                    error_p = doc.add_paragraph()
-                    error_p.add_run("Error: No se encontraron ejercicios para la tercera serie.").italic = True
-                    doc.add_paragraph()
-                else:
-                    try:
-                        # Problema 1 - Coeficiente de Gini
-                        if len(variante["tercera_serie"]) > 0:
-                            gini_data = variante["tercera_serie"][0]
-                            doc.add_paragraph().add_run(f"1. {gini_data.get('title', 'Problema de Coeficiente de Gini')}").bold = True
-                            
-                            # Tabla 1
-                            if 'ranges' in gini_data and 'workers' in gini_data:
-                                table1 = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
-                                table1.style = 'Table Grid'
-                                table1.alignment = WD_TABLE_ALIGNMENT.CENTER
-                                
-                                # Encabezados
-                                cell = table1.cell(0, 0)
-                                cell.text = "Salario mensual en (Q)"
-                                cell.paragraphs[0].runs[0].bold = True
-                                
-                                cell = table1.cell(0, 1)
-                                cell.text = "No. De trabajadores"
-                                cell.paragraphs[0].runs[0].bold = True
-                                
-                                # Datos
-                                for i, rango in enumerate(gini_data["ranges"], 1):
-                                    table1.cell(i, 0).text = rango
-                                    table1.cell(i, 1).text = str(gini_data["workers"][i-1])
-                            else:
-                                doc.add_paragraph("Error: Datos de tabla incompletos para el problema de Gini.")
-                            
-                            doc.add_paragraph("a) Complete la tabla para calcular el coeficiente de Gini.")
-                            doc.add_paragraph("b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
-                            doc.add_paragraph("c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
-                        else:
-                            doc.add_paragraph("Error: No se encontró el problema 1 (Coeficiente de Gini).")
-                    except Exception as e:
-                        print(f"Error al añadir ejercicio 1 de la tercera serie: {str(e)}")
-                        doc.add_paragraph("Error al cargar el problema 1 de la tercera serie.")
-                    
-                    try:
-                        # Problema 2 - Distribución de frecuencias
-                        if len(variante["tercera_serie"]) > 1:
-                            sturgers_data = variante["tercera_serie"][1]
-                            doc.add_paragraph().add_run(f"2. {sturgers_data.get('title', 'Problema de Distribución de Frecuencias')}").bold = True
-                            
-                            # Tabla para los datos del problema 2
-                            if 'data' in sturgers_data:
-                                table2 = doc.add_table(rows=5, cols=5)
-                                table2.style = 'Table Grid'
-                                
-                                # Llenar datos del problema 2
-                                idx = 0
-                                for i in range(5):
-                                    for j in range(5):
-                                        if idx < len(sturgers_data["data"]):
-                                            table2.cell(i, j).text = str(sturgers_data["data"][idx])
-                                            idx += 1
-                            else:
-                                doc.add_paragraph("Error: Datos incompletos para el problema de distribución de frecuencias.")
-                            
-                            doc.add_paragraph("Construya la tabla de distribución de frecuencias correspondiente.")
-                        else:
-                            doc.add_paragraph("Error: No se encontró el problema 2 (Distribución de Frecuencias).")
-                    except Exception as e:
-                        print(f"Error al añadir ejercicio 2 de la tercera serie: {str(e)}")
-                        doc.add_paragraph("Error al cargar el problema 2 de la tercera serie.")
-                    
-                    try:
-                        # Problema 3 - Diagrama de Tallo y Hoja
-                        if len(variante["tercera_serie"]) > 2:
-                            stem_leaf_data = variante["tercera_serie"][2]
-                            doc.add_paragraph().add_run(f"3. {stem_leaf_data.get('title', 'Problema de Diagrama de Tallo y Hoja')}").bold = True
-                            
-                            # Tabla para los datos del problema 3
-                            if 'data' in stem_leaf_data:
-                                table3 = doc.add_table(rows=3, cols=8)
-                                table3.style = 'Table Grid'
-                                
-                                # Llenar datos del problema 3
-                                idx = 0
-                                for i in range(3):
-                                    for j in range(8):
-                                        if idx < len(stem_leaf_data["data"]):
-                                            table3.cell(i, j).text = str(stem_leaf_data["data"][idx])
-                                            idx += 1
-                            else:
-                                doc.add_paragraph("Error: Datos incompletos para el problema de tallo y hoja.")
-                            
-                            doc.add_paragraph("a) Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.")
-                            doc.add_paragraph("b) Interprete los datos y explique brevemente sus resultados.")
-                        else:
-                            doc.add_paragraph("Error: No se encontró el problema 3 (Diagrama de Tallo y Hoja).")
-                    except Exception as e:
-                        print(f"Error al añadir ejercicio 3 de la tercera serie: {str(e)}")
-                        doc.add_paragraph("Error al cargar el problema 3 de la tercera serie.")
-                    
-                    try:
-                        # Problema 4 - Medidas de tendencia central
-                        if len(variante["tercera_serie"]) > 3:
-                            central_tendency_data = variante["tercera_serie"][3]
-                            doc.add_paragraph().add_run(f"4. {central_tendency_data.get('title', 'Problema de Medidas de Tendencia Central')}").bold = True
-                            
-                            # Tabla para el problema 4
-                            if 'ranges' in central_tendency_data and 'count' in central_tendency_data:
-                                table4 = doc.add_table(rows=len(central_tendency_data["ranges"])+1, cols=2)
-                                table4.style = 'Table Grid'
-                                
-                                # Encabezados
-                                cell = table4.cell(0, 0)
-                                cell.text = "Precio en (Q)"
-                                cell.paragraphs[0].runs[0].bold = True
-                                
-                                cell = table4.cell(0, 1)
-                                cell.text = "No. De productos"
-                                cell.paragraphs[0].runs[0].bold = True
-                                
-                                # Datos
-                                for i, rango in enumerate(central_tendency_data["ranges"], 1):
-                                    table4.cell(i, 0).text = rango
-                                    table4.cell(i, 1).text = str(central_tendency_data["count"][i-1])
-                            else:
-                                doc.add_paragraph("Error: Datos incompletos para el problema de medidas de tendencia central.")
-                        else:
-                            doc.add_paragraph("Error: No se encontró el problema 4 (Medidas de Tendencia Central).")
-                    except Exception as e:
-                        print(f"Error al añadir ejercicio 4 de la tercera serie: {str(e)}")
-                        doc.add_paragraph("Error al cargar el problema 4 de la tercera serie.")
-            except Exception as e:
-                print(f"Error general al procesar la tercera serie: {str(e)}")
-                doc.add_paragraph("Error al cargar la tercera serie.")
-        
-        # Guardar el documento
-        try:
-            # Nombre de archivo estándar
-            filename = f'Examen_{variante_id}.docx'
-            simple_path = os.path.join(EXAMENES_FOLDER, filename)
-            
-            # Nombre detallado
-            detailed_filename = f'Examen_{seccion}_{tipo_evaluacion}_{variante_id}.docx'
-            detailed_path = os.path.join(output_dir, detailed_filename)
-            
-            # Guardar en ambas ubicaciones
-            print(f"Intentando guardar examen en: {detailed_path}")
-            doc.save(detailed_path)
-            print(f"Documento guardado en: {detailed_path}")
-            
-            print(f"Intentando guardar examen en: {simple_path}")
-            doc.save(simple_path)
-            print(f"Documento guardado en: {simple_path}")
-            
-            print(f"===== EXAMEN WORD CREADO EXITOSAMENTE =====\n")
-            return filename
-        except Exception as e:
-            print(f"Error al guardar el documento: {str(e)}")
-            # Intentar guardar en una ubicación alternativa
-            try:
-                alt_path = os.path.join(UPLOAD_FOLDER, filename)
-                print(f"Intentando guardar en ubicación alternativa: {alt_path}")
-                doc.save(alt_path)
-                print(f"Guardado en ubicación alternativa: {alt_path}")
-                return filename
-            except Exception as e2:
-                print(f"Error al guardar en ubicación alternativa: {str(e2)}")
-                return None
-            
-    except Exception as e:
-        print(f"Error global al crear examen: {str(e)}")
-        traceback.print_exc()
-        return None
-        
+      
 def crear_plantilla_calificacion_detallada(variante_id, seccion="A", tipo_evaluacion="parcial1"):
     # Cargar respuestas de la variante
     with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
@@ -1876,7 +1262,8 @@ def crear_plantilla_calificacion_detallada(variante_id, seccion="A", tipo_evalua
 # Función para crear una hoja de respuestas
 def crear_hoja_respuestas(variante_id, seccion="A", tipo_evaluacion="parcial1"):
     """
-    Crea una hoja de respuestas PDF con sección y tipo de evaluación
+    Crea una hoja de respuestas PDF con sección y tipo de evaluación,
+    con formato mejorado y alineación horizontal de opciones
     """
     try:
         # Cargar respuestas y variante de la variante
@@ -1892,7 +1279,7 @@ def crear_hoja_respuestas(variante_id, seccion="A", tipo_evaluacion="parcial1"):
         
         # Dimensiones de página
         width, height = 2480, 3508  # A4 a 300 DPI
-        margin = 200  # Margen uniforme
+        margin = 150  # Margen uniforme
         
         # Crear imagen y objeto de dibujo
         image = Image.new('RGB', (width, height), 'white')
@@ -1915,216 +1302,219 @@ def crear_hoja_respuestas(variante_id, seccion="A", tipo_evaluacion="parcial1"):
             print("Usando fuentes predeterminadas")
         
         # ==================== ENCABEZADO ====================
-        # Título universidad (centrado)
-        title_y = 150
-        draw.text((width//2, title_y), "UNIVERSIDAD PANAMERICANA", 
-                fill="black", font=title_font, anchor="mm")
+        # Líneas para información del estudiante
+        line_thickness = 2
+        line_height = 40  # altura de línea base
         
-        # Facultad (centrado)
-        faculty_y = title_y + 90
-        draw.text((width//2, faculty_y), "FACULTAD DE HUMANIDADES", 
-                fill="black", font=header_font, anchor="mm")
+        # Nombre
+        nombre_y = 100
+        draw.text((margin, nombre_y), "Nombre:", fill="black", font=text_font)
+        draw.line([(margin + 250, nombre_y + line_height), (width - margin, nombre_y + line_height)], fill="black", width=line_thickness)
         
-        # Tipo de examen (centrado)
-        exam_y = faculty_y + 70
-        
-        # Convertir el tipo de evaluación a un texto legible
-        tipo_textos = {
-            'parcial1': 'PRIMER PARCIAL',
-            'parcial2': 'SEGUNDO PARCIAL',
-            'final': 'EXAMEN FINAL',
-            'corto': 'EVALUACIÓN CORTA',
-            'recuperacion': 'RECUPERACIÓN',
-            'test': 'PRUEBA'
-        }
-        tipo_texto = tipo_textos.get(tipo_evaluacion, 'EVALUACIÓN PARCIAL')
-        
-        draw.text((width//2, exam_y), f"{tipo_texto} - SECCIÓN {seccion}", 
-                fill="black", font=header_font, anchor="mm")
-        
-        # Información del estudiante
-        info_y = exam_y + 100
-        draw.text((width//2, info_y), f"HOJA DE RESPUESTAS - VARIANTE {variante_id}", 
-                fill="black", font=header_font, anchor="mm")
-        
-        student_y = info_y + 100
-        draw.text((margin, student_y), "Nombre:", fill="black", font=text_font)
-        draw.line([(margin + 200, student_y + 10), (width - margin, student_y + 10)], fill="black", width=2)
-        
-        carne_y = student_y + 80
+        # Carné y Fecha (misma línea)
+        carne_y = nombre_y + 120
         draw.text((margin, carne_y), "Carné:", fill="black", font=text_font)
-        draw.line([(margin + 200, carne_y + 10), (margin + 600, carne_y + 10)], fill="black", width=2)
+        draw.line([(margin + 250, carne_y + line_height), (margin + 600, carne_y + line_height)], fill="black", width=line_thickness)
         
-        fecha_y = carne_y
-        draw.text((width - margin - 500, fecha_y), "Fecha:", fill="black", font=text_font)
-        draw.line([(width - margin - 350, fecha_y + 10), (width - margin, fecha_y + 10)], fill="black", width=2)
+        draw.text((width - margin - 600, carne_y), "Fecha:", fill="black", font=text_font)
+        draw.line([(width - margin - 400, carne_y + line_height), (width - margin, carne_y + line_height)], fill="black", width=line_thickness)
         
-        firma_y = carne_y + 80
+        # Firma
+        firma_y = carne_y + 120
         draw.text((margin, firma_y), "Firma:", fill="black", font=text_font)
-        draw.line([(margin + 200, firma_y + 10), (margin + 600, firma_y + 10)], fill="black", width=2)
+        draw.line([(margin + 250, firma_y + line_height), (margin + 600, firma_y + line_height)], fill="black", width=line_thickness)
         
         # ==================== PRIMERA SERIE ====================
-        # Título
-        serie1_y = firma_y + 150
-        draw.text((width//2, serie1_y), "PRIMERA SERIE (40 PUNTOS)", 
-                fill="black", font=header_font, anchor="mm")
+        # Título centrado
+        title_y = firma_y + 200
+        draw.text((width//2, title_y), "PRIMERA SERIE (40 PUNTOS)", 
+                fill="black", font=title_font, anchor="mm")
         
         # Instrucciones
-        instr1_y = serie1_y + 70
-        draw.text((margin, instr1_y), "Instrucciones: Rellene completamente el círculo que corresponde a la respuesta correcta.", 
-                fill="black", font=text_font)
+        instr_y = title_y + 100
+        draw.text((width//2, instr_y), "Instrucciones: Rellene completamente el círculo que corresponde a la respuesta correcta.", 
+                fill="black", font=text_font, anchor="mm")
         
-        # Obtener número de preguntas de la primera serie
+        # Configuración para las opciones
+        row_height = 90
+        option_size = 50  # Tamaño de los círculos
+        option_spacing = 80  # Espacio entre opciones
+        col_width = width // 2
+        
+        # Comenzar con la primera serie
         primera_serie = variante.get('primera_serie', [])
-        num_preguntas1 = len(primera_serie)
+        num_preguntas = len(primera_serie)
         
-        # Dibujar opciones
-        options_start_y = instr1_y + 100
-        option_spacing = 60
-        columns = 2
-        rows_per_column = (num_preguntas1 + columns - 1) // columns
+        # Crear rejilla de 5x2 para primera serie
+        start_y = instr_y + 120
+        cols = 2
+        rows = (num_preguntas + cols - 1) // cols  # Aproximación por exceso a dividir por 2
         
-        for i in range(num_preguntas1):
+        for i in range(num_preguntas):
             # Calcular posición
-            col = i // rows_per_column
-            row = i % rows_per_column
+            col = i // rows
+            row = i % rows
             
-            q_x = margin + col * (width // 2)
-            q_y = options_start_y + row * option_spacing
+            q_x = margin + col * col_width
+            q_y = start_y + row * row_height
             
             # Dibujar número de pregunta
             draw.text((q_x, q_y), f"{i+1}.", fill="black", font=text_font)
             
-            # Dibujar opciones (círculos)
-            circle_x = q_x + 100
-            circle_spacing = 60
-            
-            # Determinar número de opciones para esta pregunta
+            # Obtener opciones para esta pregunta
             pregunta = primera_serie[i]
             opciones = pregunta.get('opciones', [])
-            num_options = len(opciones) if opciones else 5
+            num_opciones = len(opciones) if opciones else 5
             
-            for j in range(num_options):
+            # Limitar a máximo 5 opciones
+            num_opciones = min(num_opciones, 5)
+            
+            # Dibujar círculos de opciones (alineados horizontalmente)
+            for j in range(num_opciones):
+                circle_x = q_x + 150 + j * option_spacing
                 # Dibujar círculo
-                circle_center_x = circle_x + j * circle_spacing
-                draw.ellipse((circle_center_x - 15, q_y - 15, circle_center_x + 15, q_y + 15), 
-                           outline="black", width=2)
+                draw.ellipse((circle_x - option_size//2, q_y - option_size//2, 
+                             circle_x + option_size//2, q_y + option_size//2), 
+                           outline="black", width=line_thickness)
                 
-                # Dibujar letra
-                draw.text((circle_center_x, q_y), chr(65 + j), fill="black", font=option_font, anchor="mm")
+                # Dibujar letra dentro del círculo
+                draw.text((circle_x, q_y), chr(65 + j), fill="black", font=option_font, anchor="mm")
         
         # ==================== SEGUNDA SERIE ====================
-        # Título
-        serie2_y = options_start_y + rows_per_column * option_spacing + 100
-        draw.text((width//2, serie2_y), "SEGUNDA SERIE (20 PUNTOS)", 
-                fill="black", font=header_font, anchor="mm")
+        # Título centrado
+        second_title_y = start_y + rows * row_height + 120
+        draw.text((width//2, second_title_y), "SEGUNDA SERIE (20 PUNTOS)", 
+                fill="black", font=title_font, anchor="mm")
         
         # Instrucciones
-        instr2_y = serie2_y + 70
-        draw.text((margin, instr2_y), "Instrucciones: Rellene completamente el círculo que corresponde a la respuesta correcta.", 
-                fill="black", font=text_font)
+        second_instr_y = second_title_y + 100
+        draw.text((width//2, second_instr_y), "Instrucciones: Rellene completamente el círculo que corresponde a la respuesta correcta.", 
+                fill="black", font=text_font, anchor="mm")
         
-        # Obtener número de preguntas de la segunda serie
+        # Comenzar con la segunda serie
         segunda_serie = variante.get('segunda_serie', [])
         num_preguntas2 = len(segunda_serie)
         
-        # Dibujar opciones
-        options2_start_y = instr2_y + 100
+        # Una sola columna para segunda serie para mayor claridad
+        second_start_y = second_instr_y + 120
         
         for i in range(num_preguntas2):
-            q_y = options2_start_y + i * option_spacing
+            q_y = second_start_y + i * row_height
             
             # Dibujar número de pregunta
             draw.text((margin, q_y), f"{i+1}.", fill="black", font=text_font)
             
-            # Dibujar opciones (círculos)
-            circle_x = margin + 100
-            
-            # Determinar número de opciones
+            # Obtener opciones para este escenario
             escenario = segunda_serie[i]
             opciones = escenario.get('opciones', [])
-            num_options = len(opciones) if opciones else 5
+            num_opciones = len(opciones) if opciones else 5
             
-            for j in range(num_options):
+            # Limitar a máximo 5 opciones
+            num_opciones = min(num_opciones, 5)
+            
+            # Dibujar círculos de opciones (alineados horizontalmente)
+            for j in range(num_opciones):
+                circle_x = margin + 150 + j * option_spacing
                 # Dibujar círculo
-                circle_center_x = circle_x + j * circle_spacing
-                draw.ellipse((circle_center_x - 15, q_y - 15, circle_center_x + 15, q_y + 15), 
-                           outline="black", width=2)
+                draw.ellipse((circle_x - option_size//2, q_y - option_size//2, 
+                             circle_x + option_size//2, q_y + option_size//2), 
+                           outline="black", width=line_thickness)
                 
-                # Dibujar letra
-                draw.text((circle_center_x, q_y), chr(65 + j), fill="black", font=option_font, anchor="mm")
+                # Dibujar letra dentro del círculo
+                draw.text((circle_x, q_y), chr(65 + j), fill="black", font=option_font, anchor="mm")
         
         # ==================== TERCERA SERIE ====================
         # Título
-        serie3_y = options2_start_y + num_preguntas2 * option_spacing + 100
-        draw.text((width//2, serie3_y), "TERCERA SERIE (40 PUNTOS)", 
-                fill="black", font=header_font, anchor="mm")
+        third_title_y = second_start_y + num_preguntas2 * row_height + 120
+        draw.text((width//2, third_title_y), "TERCERA SERIE (40 PUNTOS)", 
+                fill="black", font=title_font, anchor="mm")
         
         # Instrucciones
-        instr3_y = serie3_y + 70
-        draw.text((margin, instr3_y), "Instrucciones: Desarrolle los ejercicios en hojas adicionales y escriba sus", 
-                fill="black", font=text_font)
-        draw.text((margin, instr3_y + 50), "respuestas finales en los espacios proporcionados.", 
-                fill="black", font=text_font)
+        third_instr_y = third_title_y + 100
+        instrucciones_text = "Instrucciones: Desarrolle los ejercicios en hojas adicionales. Escriba sus respuestas finales en los espacios proporcionados."
+        draw.text((width//2, third_instr_y), instrucciones_text, 
+                fill="black", font=text_font, anchor="mm")
         
-        # Espacios para respuestas
-        resp_start_y = instr3_y + 150
-        resp_spacing = 150
+        # Espacios para respuestas de la tercera serie
+        resp_start_y = third_instr_y + 150
+        box_spacing = 150
+        box_height = 80
+        label_width = 600
         
-        # Ejercicio 1 - Coeficiente de Gini
+        # Ejercicio 1: Coeficiente de Gini
         draw.text((margin, resp_start_y), "1. Coeficiente de Gini:", fill="black", font=text_font)
-        draw.rectangle([(margin + 400, resp_start_y - 20), (margin + 700, resp_start_y + 30)], 
-                     outline="black", width=2)
+        draw.rectangle([(margin + label_width, resp_start_y - box_height//2), 
+                       (margin + label_width + 350, resp_start_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        # Ejercicio 2 - Distribución de frecuencias
-        dist_y = resp_start_y + resp_spacing
+        # Ejercicio 2: Distribución de frecuencias
+        dist_y = resp_start_y + box_spacing
         draw.text((margin, dist_y), "2. Distribución de frecuencias:", fill="black", font=text_font)
         
-        draw.text((margin + 50, dist_y + 60), "K:", fill="black", font=text_font)
-        draw.rectangle([(margin + 100, dist_y + 40), (margin + 300, dist_y + 90)], 
-                     outline="black", width=2)
+        # 2a: K
+        sub_y = dist_y + box_spacing//2
+        draw.text((margin + 100, sub_y), "K:", fill="black", font=text_font)
+        draw.rectangle([(margin + 200, sub_y - box_height//2), 
+                       (margin + 400, sub_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        draw.text((margin + 350, dist_y + 60), "Rango:", fill="black", font=text_font)
-        draw.rectangle([(margin + 500, dist_y + 40), (margin + 700, dist_y + 90)], 
-                     outline="black", width=2)
+        # 2b: Rango
+        draw.text((margin + 600, sub_y), "Rango:", fill="black", font=text_font)
+        draw.rectangle([(margin + 800, sub_y - box_height//2), 
+                       (margin + 1000, sub_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        draw.text((margin + 50, dist_y + 120), "Amplitud:", fill="black", font=text_font)
-        draw.rectangle([(margin + 250, dist_y + 100), (margin + 450, dist_y + 150)], 
-                     outline="black", width=2)
+        # 2c: Amplitud
+        sub2_y = sub_y + box_spacing//2
+        draw.text((margin + 100, sub2_y), "Amplitud:", fill="black", font=text_font)
+        draw.rectangle([(margin + 300, sub2_y - box_height//2), 
+                       (margin + 500, sub2_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        # Ejercicio 3 - Tallo y Hoja
-        tallo_y = dist_y + resp_spacing + 50
+        # Ejercicio 3: Tallo y Hoja
+        tallo_y = sub2_y + box_spacing
         draw.text((margin, tallo_y), "3. Tallo y Hoja:", fill="black", font=text_font)
         
-        draw.text((margin + 50, tallo_y + 60), "Moda:", fill="black", font=text_font)
-        draw.rectangle([(margin + 200, tallo_y + 40), (margin + 400, tallo_y + 90)], 
-                     outline="black", width=2)
+        # 3a: Moda
+        subtallo_y = tallo_y + box_spacing//2
+        draw.text((margin + 100, subtallo_y), "Moda:", fill="black", font=text_font)
+        draw.rectangle([(margin + 250, subtallo_y - box_height//2), 
+                       (margin + 450, subtallo_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        draw.text((margin + 50, tallo_y + 120), "Intervalo de mayor concentración:", fill="black", font=text_font)
-        draw.rectangle([(margin + 550, tallo_y + 100), (margin + 750, tallo_y + 150)], 
-                     outline="black", width=2)
+        # 3b: Intervalo
+        draw.text((margin + 600, subtallo_y), "Intervalo:", fill="black", font=text_font)
+        draw.rectangle([(margin + 800, subtallo_y - box_height//2), 
+                       (margin + 1000, subtallo_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        # Ejercicio 4 - Medidas de tendencia central
-        med_y = tallo_y + resp_spacing + 50
-        draw.text((margin, med_y), "4. Medidas de tendencia central:", fill="black", font=text_font)
+        # Ejercicio 4: Medidas de tendencia central
+        central_y = subtallo_y + box_spacing
+        draw.text((margin, central_y), "4. Medidas de tendencia central:", fill="black", font=text_font)
         
-        draw.text((margin + 50, med_y + 60), "Media:", fill="black", font=text_font)
-        draw.rectangle([(margin + 200, med_y + 40), (margin + 400, med_y + 90)], 
-                     outline="black", width=2)
+        # 4a: Media
+        subcentral_y = central_y + box_spacing//2
+        draw.text((margin + 100, subcentral_y), "Media:", fill="black", font=text_font)
+        draw.rectangle([(margin + 250, subcentral_y - box_height//2), 
+                       (margin + 450, subcentral_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        draw.text((margin + 450, med_y + 60), "Mediana:", fill="black", font=text_font)
-        draw.rectangle([(margin + 650, med_y + 40), (margin + 850, med_y + 90)], 
-                     outline="black", width=2)
+        # 4b: Mediana
+        draw.text((margin + 600, subcentral_y), "Mediana:", fill="black", font=text_font)
+        draw.rectangle([(margin + 800, subcentral_y - box_height//2), 
+                       (margin + 1000, subcentral_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
-        draw.text((margin + 50, med_y + 120), "Moda:", fill="black", font=text_font)
-        draw.rectangle([(margin + 200, med_y + 100), (margin + 400, med_y + 150)], 
-                     outline="black", width=2)
+        # 4c: Moda
+        subcentral2_y = subcentral_y + box_spacing//2
+        draw.text((margin + 100, subcentral2_y), "Moda:", fill="black", font=text_font)
+        draw.rectangle([(margin + 250, subcentral2_y - box_height//2), 
+                       (margin + 450, subcentral2_y + box_height//2)], 
+                      outline="black", width=line_thickness)
         
         # ==================== PIE DE PÁGINA ====================
         footer_y = height - 100
-        draw.text((width//2, footer_y), f"Universidad Panamericana - {tipo_texto} - Sección {seccion}", 
-                fill="black", font=small_font, anchor="mm")
-        draw.text((width//2, footer_y + 50), f"Variante: {variante_id}", 
+        draw.text((width//2, footer_y), f"Universidad Panamericana - {tipo_evaluacion} - Sección {seccion} - Variante {variante_id}", 
                 fill="black", font=small_font, anchor="mm")
         
         # Crear carpeta con timestamp para esta generación
@@ -2154,7 +1544,8 @@ def crear_hoja_respuestas(variante_id, seccion="A", tipo_evaluacion="parcial1"):
         print(f"Error al crear hoja de respuestas: {str(e)}")
         traceback.print_exc()
         return None
-    
+
+
 # Función para crear una plantilla de calificación
 def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parcial1"):
     """
@@ -3806,14 +3197,47 @@ def index():
             if variante_id in variantes_procesadas:
                 continue
             
-            # Verificar si existen los archivos
-            tiene_examen = os.path.exists(os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx'))
-            tiene_hoja = os.path.exists(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf'))
-            tiene_plantilla = os.path.exists(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf'))
+            # CORRECCIÓN: Mejorar la verificación de existencia de archivos
+            # Asegurarse de buscar en directorios específicos si existen
+            directorio = item.get('directorio')
             
-            # Verificar si existe la solución matemática
+            # Verificar si existen los archivos
+            tiene_examen = False
+            tiene_hoja = False
+            tiene_plantilla = False
+            tiene_solucion = False
             solucion_matematica = item.get('solucion_matematica')
-            tiene_solucion = solucion_matematica and os.path.exists(os.path.join(PLANTILLAS_FOLDER, solucion_matematica))
+            
+            # Rutas de archivo estándar (sin directorio)
+            examen_path = os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx')
+            hoja_path = os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf')
+            plantilla_path = os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf')
+            
+            # Verificar en ruta estándar primero
+            tiene_examen = os.path.exists(examen_path)
+            tiene_hoja = os.path.exists(hoja_path)
+            tiene_plantilla = os.path.exists(plantilla_path)
+            
+            # Si hay un directorio específico, también verificar allí
+            if directorio:
+                examen_dir_path = os.path.join(EXAMENES_FOLDER, directorio, f'Examen_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.docx')
+                hoja_dir_path = os.path.join(HOJAS_RESPUESTA_FOLDER, directorio, f'HojaRespuestas_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.pdf')
+                plantilla_dir_path = os.path.join(PLANTILLAS_FOLDER, directorio, f'Plantilla_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.pdf')
+                
+                # Actualizar estado si se encuentra en directorio específico
+                tiene_examen = tiene_examen or os.path.exists(examen_dir_path)
+                tiene_hoja = tiene_hoja or os.path.exists(hoja_dir_path)
+                tiene_plantilla = tiene_plantilla or os.path.exists(plantilla_dir_path)
+            
+            # Verificar la solución matemática
+            if solucion_matematica:
+                sol_path = os.path.join(PLANTILLAS_FOLDER, solucion_matematica)
+                tiene_solucion = os.path.exists(sol_path)
+                
+                # También verificar en el directorio si existe
+                if directorio and not tiene_solucion:
+                    sol_dir_path = os.path.join(PLANTILLAS_FOLDER, directorio, solucion_matematica)
+                    tiene_solucion = os.path.exists(sol_dir_path)
             
             # Añadir la variante a la lista
             variantes.append({
@@ -3825,7 +3249,7 @@ def index():
                 'tiene_plantilla': tiene_plantilla,
                 'solucion_matematica': solucion_matematica if tiene_solucion else None,
                 'tiene_solucion': tiene_solucion,
-                'directorio': item.get('directorio')
+                'directorio': directorio
             })
             
             variantes_procesadas.add(variante_id)
@@ -4170,11 +3594,11 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
         # Reemplazar placeholders en todo el documento
         placeholders = {
             '{variante}': variante_id,
-            '{salon}': salon,
-            '{licenciatura}': licenciatura,
-            '{nombre_curso}': nombre_curso,
-            '{nombre_docente}': nombre_docente,
-            '{anio}': anio,
+            '{salon}': salon if salon else "",
+            '{licenciatura}': licenciatura if licenciatura else "Humanidades",
+            '{nombre_curso}': nombre_curso if nombre_curso else "Estadística Básica",
+            '{nombre_docente}': nombre_docente if nombre_docente else "Ing. Marco Antonio Jiménez",
+            '{anio}': anio if anio else "2025",
             '{tipo_evaluacion}': tipo_texto
         }
         
@@ -4182,8 +3606,10 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
         for paragraph in doc.paragraphs:
             for key, value in placeholders.items():
                 if key in paragraph.text:
+                    paragraph.text = paragraph.text.replace(key, value)
+                    # Restaurar el formato después de reemplazar
                     for run in paragraph.runs:
-                        run.text = run.text.replace(key, value)
+                        run.font.name = "Times New Roman"
         
         # Para tablas
         for table in doc.tables:
@@ -4192,11 +3618,10 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
                     for paragraph in cell.paragraphs:
                         for key, value in placeholders.items():
                             if key in paragraph.text:
+                                paragraph.text = paragraph.text.replace(key, value)
+                                # Restaurar el formato después de reemplazar
                                 for run in paragraph.runs:
-                                    run.text = run.text.replace(key, value)
-        
-        # Ahora, buscamos los placeholders de contenido de serie y los reemplazamos
-        # con el contenido generado
+                                    run.font.name = "Times New Roman"
         
         # Función para generar el texto de pregunta de la primera serie
         def generar_primera_serie(preguntas):
@@ -4271,52 +3696,814 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
         segunda_serie_text = generar_segunda_serie(variante.get("segunda_serie", []))
         tercera_serie_text = generar_tercera_serie(variante.get("tercera_serie", []))
         
-        # Reemplazar placeholders de series en párrafos
+        # Este bucle busca y reemplaza los marcadores de sección en párrafos
         for paragraph in doc.paragraphs:
             text = paragraph.text
-            
             if "{primera_serie}" in text:
-                # Reemplazamos el placeholder con el contenido real
+                # Reemplazamos el texto completo con las preguntas, manteniendo el formato
                 paragraph.clear()
-                paragraph.add_run(primera_serie_text)
+                para = paragraph.add_run(primera_serie_text)
+                para.font.name = "Times New Roman"
                 print("Reemplazado {primera_serie} en párrafo")
-                
             elif "{segunda_serie}" in text:
                 paragraph.clear()
-                paragraph.add_run(segunda_serie_text)
+                para = paragraph.add_run(segunda_serie_text)
+                para.font.name = "Times New Roman"
                 print("Reemplazado {segunda_serie} en párrafo")
-                
             elif "{tercera_serie}" in text:
                 paragraph.clear()
-                paragraph.add_run(tercera_serie_text)
+                para = paragraph.add_run(tercera_serie_text)
+                para.font.name = "Times New Roman"
                 print("Reemplazado {tercera_serie} en párrafo")
         
-        # También buscar en tablas
+        # Buscamos marcadores también en tablas
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for paragraph in cell.paragraphs:
                         text = paragraph.text
-                        
                         if "{primera_serie}" in text:
                             paragraph.clear()
-                            paragraph.add_run(primera_serie_text)
+                            para = paragraph.add_run(primera_serie_text)
+                            para.font.name = "Times New Roman"
                             print("Reemplazado {primera_serie} en tabla")
-                            
                         elif "{segunda_serie}" in text:
                             paragraph.clear()
-                            paragraph.add_run(segunda_serie_text)
+                            para = paragraph.add_run(segunda_serie_text)
+                            para.font.name = "Times New Roman"
                             print("Reemplazado {segunda_serie} en tabla")
-                            
                         elif "{tercera_serie}" in text:
                             paragraph.clear()
-                            paragraph.add_run(tercera_serie_text)
+                            para = paragraph.add_run(tercera_serie_text)
+                            para.font.name = "Times New Roman"
                             print("Reemplazado {tercera_serie} en tabla")
         
         return doc
         
     except Exception as e:
         print(f"Error al procesar plantilla: {str(e)}")
+        traceback.print_exc()
+        return None
+
+def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo_path=None, plantilla_path=None, 
+                  licenciatura="", nombre_curso="Estadística Básica", nombre_docente="Ing. Marco Antonio Jiménez", 
+                  anio="2025", salon=""):
+    """
+    Crea documento de examen con logo y usando plantilla opcional
+    Soporta reemplazo de placeholders para personalización
+    """
+    try:
+        print(f"\n===== INICIANDO CREACIÓN DE EXAMEN WORD =====")
+        print(f"Parámetros: variante_id={variante_id}, seccion={seccion}, tipo_evaluacion={tipo_evaluacion}")
+        print(f"Logo path: {logo_path}")
+        print(f"Plantilla path: {plantilla_path}")
+        
+        # Importar Document aquí para asegurarse de que está disponible
+        from docx import Document
+        from docx.shared import Pt, Inches, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.enum.style import WD_STYLE_TYPE
+        
+        # Cargar la variante
+        try:
+            with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
+                variante = json.load(f)
+                print(f"Variante cargada correctamente: {variante_id}")
+        except Exception as e:
+            print(f"Error al cargar variante: {str(e)}")
+            variante = {
+                "primera_serie": [],
+                "segunda_serie": [],
+                "tercera_serie": []
+            }
+        
+        # Generar carpeta con timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = os.path.join(EXAMENES_FOLDER, f'{seccion}_{tipo_evaluacion}_{timestamp}')
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"Carpeta de salida creada: {output_dir}")
+        
+        # Verificar plantilla y su formato
+        use_template = False
+        if plantilla_path and os.path.exists(plantilla_path):
+            print(f"Plantilla encontrada: {plantilla_path}")
+            
+            # Detectar si es una plantilla con placeholders o una plantilla de formato general
+            try:
+                # Intentar abrir la plantilla para verificar que es un archivo .docx válido
+                doc_temp = Document(plantilla_path)
+                
+                # Buscar placeholders en la plantilla
+                has_placeholders = False
+                for paragraph in doc_temp.paragraphs:
+                    if any(marker in paragraph.text for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}', '{variante}']):
+                        has_placeholders = True
+                        break
+                
+                # También buscar en tablas
+                if not has_placeholders:
+                    for table in doc_temp.tables:
+                        for row in table.rows:
+                            for cell in row.cells:
+                                for paragraph in cell.paragraphs:
+                                    if any(marker in paragraph.text for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}', '{variante}']):
+                                        has_placeholders = True
+                                        break
+                                if has_placeholders:
+                                    break
+                            if has_placeholders:
+                                break
+                        if has_placeholders:
+                            break
+                
+                if has_placeholders:
+                    print("Plantilla con placeholders detectada. Utilizando procesamiento especial.")
+                    doc = procesar_plantilla_examen(
+                        plantilla_path, 
+                        variante_id, 
+                        seccion, 
+                        tipo_evaluacion, 
+                        variante,
+                        licenciatura,
+                        nombre_curso,
+                        nombre_docente,
+                        anio,
+                        salon
+                    )
+                    
+                    if doc:
+                        use_template = True
+                        print("Plantilla procesada correctamente con reemplazo de placeholders.")
+                    else:
+                        print("Error al procesar plantilla con placeholders. Creando examen estándar.")
+                        doc = Document()
+                else:
+                    print("Plantilla sin placeholders detectada. Usando como base de formato.")
+                    doc = Document(plantilla_path)
+                    use_template = True
+            except Exception as e:
+                print(f"Error al analizar plantilla: {str(e)}")
+                print(f"Se creará un documento nuevo en su lugar")
+                doc = Document()
+        else:
+            print(f"No se encontró plantilla. Se creará un documento nuevo.")
+            doc = Document()
+        
+        # Si estamos usando una plantilla con placeholders ya procesada, solo guardamos y terminamos
+        if use_template and 'doc' in locals() and doc and any(marker in paragraph.text for paragraph in doc.paragraphs 
+                                                           for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}']):
+            # No es necesario añadir contenido, ya fue reemplazado en procesar_plantilla_examen
+            print("Usando plantilla con placeholders ya procesados.")
+        else:
+            # Continuar con el proceso normal de creación/llenado de documento
+            # Crear o verificar los estilos necesarios
+            styles = doc.styles
+            
+            # Definir la fuente para todo el documento
+            font_name = "Times New Roman"
+            
+            # Verificar/crear estilos básicos de encabezado
+            style_names = [s.name for s in styles]
+            
+            # Crear Heading 1 si no existe
+            if 'Heading 1' not in style_names:
+                try:
+                    heading1 = styles.add_style('Heading 1', WD_STYLE_TYPE.PARAGRAPH)
+                    heading1.font.bold = True
+                    heading1.font.size = Pt(18)
+                    heading1.font.name = font_name
+                    print("Estilo 'Heading 1' creado")
+                except Exception as e:
+                    print(f"Error al crear estilo 'Heading 1': {str(e)}")
+                    # Crear un estilo alternativo
+                    if 'Title' in style_names:
+                        heading1 = styles['Title']
+                        heading1.font.name = font_name
+                        print("Usando estilo 'Title' como alternativa")
+                    else:
+                        # Si no hay alternativa, crear un estilo personalizado
+                        heading1 = styles.add_style('CustomHeading1', WD_STYLE_TYPE.PARAGRAPH)
+                        heading1.font.bold = True
+                        heading1.font.size = Pt(18)
+                        heading1.font.name = font_name
+                        print("Estilo 'CustomHeading1' creado como alternativa")
+            
+            # Crear Heading 2 si no existe
+            if 'Heading 2' not in style_names:
+                try:
+                    heading2 = styles.add_style('Heading 2', WD_STYLE_TYPE.PARAGRAPH)
+                    heading2.font.bold = True
+                    heading2.font.size = Pt(16)
+                    heading2.font.name = font_name
+                    print("Estilo 'Heading 2' creado")
+                except Exception as e:
+                    print(f"Error al crear estilo 'Heading 2': {str(e)}")
+                    # Crear un estilo alternativo
+                    if 'Subtitle' in style_names:
+                        heading2 = styles['Subtitle']
+                        heading2.font.name = font_name
+                        print("Usando estilo 'Subtitle' como alternativa")
+                    else:
+                        # Si no hay alternativa, crear un estilo personalizado
+                        heading2 = styles.add_style('CustomHeading2', WD_STYLE_TYPE.PARAGRAPH)
+                        heading2.font.bold = True
+                        heading2.font.size = Pt(16)
+                        heading2.font.name = font_name
+                        print("Estilo 'CustomHeading2' creado como alternativa")
+            
+            # Crear List Bullet si no existe
+            if 'List Bullet' not in style_names:
+                try:
+                    list_bullet = styles.add_style('List Bullet', WD_STYLE_TYPE.PARAGRAPH)
+                    list_bullet.font.size = Pt(12)
+                    list_bullet.font.name = font_name
+                    print("Estilo 'List Bullet' creado")
+                except Exception as e:
+                    print(f"Error al crear estilo 'List Bullet': {str(e)}")
+                    # Crear un estilo personalizado
+                    list_bullet = styles.add_style('CustomListBullet', WD_STYLE_TYPE.PARAGRAPH)
+                    list_bullet.font.size = Pt(12)
+                    list_bullet.font.name = font_name
+                    print("Estilo 'CustomListBullet' creado como alternativa")
+            
+            # Verificar/crear estilo 'TitleStyle'
+            try:
+                if 'TitleStyle' not in style_names:
+                    title_style = styles.add_style('TitleStyle', WD_STYLE_TYPE.PARAGRAPH)
+                    title_style.font.bold = True
+                    title_style.font.size = Pt(16)
+                    title_style.font.name = font_name
+                    print("Estilo 'TitleStyle' creado")
+                    
+                # Verificar/crear estilo 'SubtitleStyle'
+                if 'SubtitleStyle' not in style_names:
+                    subtitle_style = styles.add_style('SubtitleStyle', WD_STYLE_TYPE.PARAGRAPH)
+                    subtitle_style.font.italic = True
+                    subtitle_style.font.size = Pt(12)
+                    subtitle_style.font.name = font_name
+                    print("Estilo 'SubtitleStyle' creado")
+            except Exception as e:
+                print(f"Error al crear estilos: {str(e)}")
+                print("Continuando con estilos predeterminados...")
+            
+            # Configurar márgenes
+            try:
+                sections = doc.sections
+                for section in sections:
+                    section.top_margin = Inches(0.7)
+                    section.bottom_margin = Inches(0.7)
+                    section.left_margin = Inches(0.8)
+                    section.right_margin = Inches(0.8)
+                print("Márgenes configurados")
+            except Exception as e:
+                print(f"Error al configurar márgenes: {str(e)}")
+                print("Continuando con márgenes predeterminados...")
+                
+            # Encabezado con tabla
+            try:
+                header_table = doc.add_table(rows=1, cols=2)
+                header_table.style = 'Table Grid'
+                
+                # Celda para logo
+                logo_cell = header_table.cell(0, 0)
+                logo_paragraph = logo_cell.paragraphs[0]
+                
+                # Verificar que el logo existe y añadirlo
+                if logo_path and os.path.exists(logo_path):
+                    try:
+                        logo_paragraph.add_run().add_picture(logo_path, width=Inches(1.0))
+                        print(f"Logo añadido desde {logo_path}")
+                    except Exception as e:
+                        print(f"Error al añadir logo: {str(e)}")
+                        logo_paragraph.text = "LOGO"
+                else:
+                    print(f"Logo no encontrado en {logo_path}")
+                    logo_paragraph.text = "LOGO"
+            
+                # Celda para título
+                title_cell = header_table.cell(0, 1)
+                
+                # Título Universidad
+                try:
+                    # Usar campos desde parameters o predeterminados
+                    univ_para = title_cell.add_paragraph('Universidad Panamericana')
+                    try:
+                        univ_para.style = 'TitleStyle'
+                    except:
+                        # Si falla al aplicar el estilo, aplicar formato directamente
+                        for run in univ_para.runs:
+                            run.bold = True
+                            run.font.size = Pt(16)
+                            run.font.name = font_name
+                    univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception as e:
+                    print(f"Error al aplicar estilo TitleStyle: {str(e)}")
+                    univ_para = title_cell.add_paragraph('Universidad Panamericana')
+                    univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in univ_para.runs:
+                        run.bold = True
+                        run.font.size = Pt(16)
+                        run.font.name = font_name
+                
+                # Facultad y curso con placeholders
+                try:
+                    headers = [
+                        f'Facultad de {licenciatura or "Humanidades"}',
+                        f'{nombre_curso or "Estadística Básica"} - Sección {seccion}',
+                        f'{nombre_docente or "Ing. Marco Antonio Jiménez"}',
+                        f'{anio or "2025"}'
+                    ]
+                    
+                    for header_text in headers:
+                        header = title_cell.add_paragraph(header_text)
+                        try:
+                            header.style = 'SubtitleStyle'
+                        except:
+                            # Si falla al aplicar el estilo, aplicar formato directamente
+                            for run in header.runs:
+                                run.italic = True
+                                run.font.size = Pt(12)
+                                run.font.name = font_name
+                        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception as e:
+                    print(f"Error al aplicar estilo SubtitleStyle: {str(e)}")
+                    for header_text in headers:
+                        header = title_cell.add_paragraph(header_text)
+                        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in header.runs:
+                            run.italic = True
+                            run.font.size = Pt(12)
+                            run.font.name = font_name
+            except Exception as e:
+                print(f"Error al crear encabezado: {str(e)}")
+                doc.add_paragraph('Universidad Panamericana').bold = True
+                doc.add_paragraph(f'Facultad de {licenciatura or "Humanidades"}')
+                doc.add_paragraph(f'{nombre_curso or "Estadística Básica"} - Sección {seccion}')
+                
+            # Título del examen
+            try:
+                tipo_eval_textos = {
+                    'parcial1': 'Primer Examen Parcial',
+                    'parcial2': 'Segundo Examen Parcial',
+                    'final': 'Examen Final',
+                    'corto': 'Evaluación Corta',
+                    'recuperacion': 'Examen de Recuperación',
+                    'test': 'Prueba de Evaluación'
+                }
+                
+                tipo_texto = tipo_eval_textos.get(tipo_evaluacion, 'Evaluación Parcial')
+                
+                # Intentar añadir con Heading 1
+                try:
+                    exam_title = doc.add_heading(f'{tipo_texto} ({variante_id})', 1)
+                    exam_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in exam_title.runs:
+                        run.font.name = font_name
+                except Exception as e:
+                    print(f"Error al usar Heading 1: {str(e)}")
+                    # Alternativa usando párrafo normal
+                    p = doc.add_paragraph(f'{tipo_texto} ({variante_id})')
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in p.runs:
+                        run.bold = True
+                        run.font.size = Pt(18)
+                        run.font.name = font_name
+                
+                # Añadir salón si se proporcionó
+                if salon:
+                    salon_text = doc.add_paragraph(f"Salón: {salon}")
+                    salon_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in salon_text.runs:
+                        run.font.name = font_name
+            except Exception as e:
+                print(f"Error al añadir título del examen: {str(e)}")
+                p = doc.add_paragraph(f'{tipo_eval_textos.get(tipo_evaluacion, "Evaluación Parcial")} ({variante_id})')
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in p.runs:
+                    run.bold = True
+                    run.font.size = Pt(14)
+                    run.font.name = font_name
+            
+            # Información del estudiante
+            doc.add_paragraph()
+            student_info = doc.add_paragraph('Nombre del estudiante: _____________________________________________________________')
+            for run in student_info.runs:
+                run.font.name = font_name
+            
+            info_line = doc.add_paragraph()
+            info_line.add_run('Fecha: ____________________ ')
+            info_line.add_run('Carné: ___________________ ')
+            info_line.add_run('Firma: ________________________')
+            for run in info_line.runs:
+                run.font.name = font_name
+            
+            doc.add_paragraph()
+            
+            # Primera serie
+            try:
+                # Intentar añadir con Heading 2
+                try:
+                    serie1 = doc.add_heading('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)', 2)
+                    for run in serie1.runs:
+                        run.font.name = font_name
+                except Exception as e:
+                    print(f"Error al usar Heading 2: {str(e)}")
+                    # Alternativa usando párrafo normal
+                    serie1 = doc.add_paragraph('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)')
+                    for run in serie1.runs:
+                        run.bold = True
+                        run.font.size = Pt(16)
+                        run.font.name = font_name
+                
+                instructions = doc.add_paragraph()
+                instr_run = instructions.add_run('Instrucciones: ')
+                instr_run.bold = True
+                instr_run.font.name = font_name
+                normal_run = instructions.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta. Subraye con lapicero la opción u opciones que considere correcta(s) para cada pregunta. Las respuestas hechas con lápiz no serán aceptadas como válidas.')
+                normal_run.font.name = font_name
+            except Exception as e:
+                print(f"Error al añadir encabezado de primera serie: {str(e)}")
+                doc.add_paragraph('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)')
+                p = doc.add_paragraph()
+                p.add_run('Instrucciones: ').bold = True
+                p.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta...')
+                
+                # Preguntas de la primera serie
+                try:
+                    if "primera_serie" in variante and variante["primera_serie"]:
+                        for i, pregunta in enumerate(variante["primera_serie"], 1):
+                            question_para = doc.add_paragraph()
+                            
+                            # Modificación: Separar el número y el texto para mejor control del formato
+                            # Agregar solo el número con formato en negrita
+                            num_run = question_para.add_run(f"{i}. ")
+                            num_run.bold = True
+                            num_run.font.name = font_name
+                            num_run.font.size = Pt(12)
+                            
+                            # Agregar el texto de la pregunta, también en negrita
+                            text_run = question_para.add_run(f"{pregunta['pregunta']}")
+                            text_run.bold = True
+                            text_run.font.name = font_name
+                            
+                            for opcion in pregunta.get("opciones", []):
+                                try:
+                                    # Intentar usar estilo List Bullet
+                                    option_para = doc.add_paragraph(style='List Bullet')
+                                    opt_run = option_para.add_run(opcion)
+                                    opt_run.font.name = font_name
+                                except Exception as e:
+                                    print(f"Error al usar estilo List Bullet: {str(e)}")
+                                    # Alternativa usando párrafo normal con viñeta manual
+                                    option_para = doc.add_paragraph()
+                                    opt_run = option_para.add_run(f"• {opcion}")
+                                    opt_run.font.name = font_name
+                                    option_para.paragraph_format.left_indent = Inches(0.25)
+                        
+                        doc.add_paragraph()
+                    else:
+                        error_p = doc.add_paragraph()
+                        error_run = error_p.add_run("Error: No se encontraron preguntas para la primera serie.")
+                        error_run.italic = True
+                        error_run.font.name = font_name
+                        doc.add_paragraph()
+                except Exception as e:
+                    print(f"Error al añadir preguntas de la primera serie: {str(e)}")
+                    doc.add_paragraph("Error al cargar preguntas de la primera serie.")
+
+                # También modifica la sección para la segunda serie de manera similar:
+
+                # Escenarios de la segunda serie
+                if "segunda_serie" in variante and variante["segunda_serie"]:
+                    for i, escenario in enumerate(variante["segunda_serie"], 1):
+                        escenario_para = doc.add_paragraph()
+                        
+                        # Modificación: Separar el número y el texto
+                        num_run = escenario_para.add_run(f"{i}. ")
+                        num_run.bold = True
+                        num_run.font.name = font_name
+                        num_run.font.size = Pt(12)
+                        
+                        # El texto del escenario también en negrita
+                        esc_run = escenario_para.add_run(f"{escenario.get('escenario', '')}")
+                        esc_run.bold = True
+                        esc_run.font.name = font_name
+                        
+                        for opcion in escenario.get("opciones", []):
+                            try:
+                                # Intentar usar estilo List Bullet
+                                option_para = doc.add_paragraph(style='List Bullet')
+                                opt_run = option_para.add_run(opcion)
+                                opt_run.font.name = font_name
+                            except Exception as e:
+                                print(f"Error al usar estilo List Bullet: {str(e)}")
+                                # Alternativa usando párrafo normal con viñeta manual
+                                option_para = doc.add_paragraph()
+                                opt_run = option_para.add_run(f"• {opcion}")
+                                opt_run.font.name = font_name
+                                option_para.paragraph_format.left_indent = Inches(0.25)
+                        
+                        doc.add_paragraph()
+                else:
+                    error_p = doc.add_paragraph()
+                    error_run = error_p.add_run("Error: No se encontraron escenarios para la segunda serie.")
+                    error_run.italic = True
+                    error_run.font.name = font_name
+                    doc.add_paragraph()
+
+                # Y también para la tercera serie:
+
+                # Problema 1, 2, 3, 4 (Tercera serie)
+                if len(variante["tercera_serie"]) > 0:
+                    gini_data = variante["tercera_serie"][0]
+                    p = doc.add_paragraph()
+                    
+                    # Modificación: Separar número y texto
+                    num_run = p.add_run("1. ")
+                    num_run.bold = True
+                    num_run.font.name = font_name
+                    num_run.font.size = Pt(12)
+                    
+                    gini_run = p.add_run(f"{gini_data.get('title', 'Problema de Coeficiente de Gini')}")
+                    gini_run.bold = True
+                    gini_run.font.name = font_name
+                
+                instructions3 = doc.add_paragraph()
+                instr3_run = instructions3.add_run('Instrucciones: ')
+                instr3_run.bold = True
+                instr3_run.font.name = font_name
+                normal3_run = instructions3.add_run('Desarrollar los ejercicios, dejando respaldo de sus operaciones. Asegúrese de escribir su respuesta final con lapicero; no se aceptarán respuestas escritas con lápiz. Mantenga su trabajo organizado y legible.')
+                normal3_run.font.name = font_name
+                
+                # Verifica que tercera_serie esté presente
+                if "tercera_serie" not in variante or not variante["tercera_serie"]:
+                    error_p = doc.add_paragraph()
+                    error_run = error_p.add_run("Error: No se encontraron ejercicios para la tercera serie.")
+                    error_run.italic = True
+                    error_run.font.name = font_name
+                    doc.add_paragraph()
+                else:
+                    try:
+                        # Problema 1 - Coeficiente de Gini
+                        if len(variante["tercera_serie"]) > 0:
+                            gini_data = variante["tercera_serie"][0]
+                            p = doc.add_paragraph()
+                            gini_run = p.add_run(f"1. {gini_data.get('title', 'Problema de Coeficiente de Gini')}")
+                            gini_run.bold = True
+                            gini_run.font.name = font_name
+                            
+                            # Tabla 1
+                            if 'ranges' in gini_data and 'workers' in gini_data:
+                                table1 = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
+                                table1.style = 'Table Grid'
+                                table1.alignment = WD_TABLE_ALIGNMENT.CENTER
+                                
+                                # Encabezados
+                                cell = table1.cell(0, 0)
+                                cell.text = "Salario mensual en (Q)"
+                                cell.paragraphs[0].runs[0].bold = True
+                                cell.paragraphs[0].runs[0].font.name = font_name
+                                
+                                cell = table1.cell(0, 1)
+                                cell.text = "No. De trabajadores"
+                                cell.paragraphs[0].runs[0].bold = True
+                                cell.paragraphs[0].runs[0].font.name = font_name
+                                
+                                # Datos
+                                for i, rango in enumerate(gini_data["ranges"], 1):
+                                    table1.cell(i, 0).text = rango
+                                    table1.cell(i, 1).text = str(gini_data["workers"][i-1])
+                                    
+                                    # Aplicar fuente a todas las celdas de datos
+                                    for j in range(2):
+                                        for paragraph in table1.cell(i, j).paragraphs:
+                                            for run in paragraph.runs:
+                                                run.font.name = font_name
+                            else:
+                                p = doc.add_paragraph("Error: Datos de tabla incompletos para el problema de Gini.")
+                                for run in p.runs:
+                                    run.font.name = font_name
+                            
+                            # Incisos en negrita con un formato más prominente
+                            p = doc.add_paragraph()
+                            a_run = p.add_run("a) ")
+                            a_run.bold = True
+                            a_run.font.name = font_name
+                            a_run.font.size = Pt(12)
+                            a_cont = p.add_run("Complete la tabla para calcular el coeficiente de Gini.")
+                            a_cont.font.name = font_name
+                            
+                            p = doc.add_paragraph()
+                            b_run = p.add_run("b) ")
+                            b_run.bold = True
+                            b_run.font.name = font_name
+                            b_run.font.size = Pt(12)
+                            b_cont = p.add_run("Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
+                            b_cont.font.name = font_name
+                            
+                            p = doc.add_paragraph()
+                            c_run = p.add_run("c) ")
+                            c_run.bold = True
+                            c_run.font.name = font_name
+                            c_run.font.size = Pt(12)
+                            c_cont = p.add_run("Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
+                            c_cont.font.name = font_name
+                        else:
+                            p = doc.add_paragraph("Error: No se encontró el problema 1 (Coeficiente de Gini).")
+                            for run in p.runs:
+                                run.font.name = font_name
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 1 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 1 de la tercera serie.")
+                    
+                    try:
+                        # Problema 2 - Distribución de frecuencias
+                        if len(variante["tercera_serie"]) > 1:
+                            sturgers_data = variante["tercera_serie"][1]
+                            p = doc.add_paragraph()
+                            sturgers_run = p.add_run(f"2. {sturgers_data.get('title', 'Problema de Distribución de Frecuencias')}")
+                            sturgers_run.bold = True
+                            sturgers_run.font.name = font_name
+                            
+                            # Tabla para los datos del problema 2
+                            if 'data' in sturgers_data:
+                                table2 = doc.add_table(rows=5, cols=5)
+                                table2.style = 'Table Grid'
+                                
+                                # Llenar datos del problema 2
+                                idx = 0
+                                for i in range(5):
+                                    for j in range(5):
+                                        if idx < len(sturgers_data["data"]):
+                                            table2.cell(i, j).text = str(sturgers_data["data"][idx])
+                                            
+                                            # Aplicar fuente a todas las celdas
+                                            for paragraph in table2.cell(i, j).paragraphs:
+                                                for run in paragraph.runs:
+                                                    run.font.name = font_name
+                                            idx += 1
+                            else:
+                                p = doc.add_paragraph("Error: Datos incompletos para el problema de distribución de frecuencias.")
+                                for run in p.runs:
+                                    run.font.name = font_name
+                            
+                            # Instrucción con formato consistente
+                            p = doc.add_paragraph()
+                            p_run_bold = p.add_run("Instrucción: ")
+                            p_run_bold.bold = True
+                            p_run_bold.font.name = font_name
+                            p_run_bold.font.size = Pt(12)
+                            p_run = p.add_run("Construya la tabla de distribución de frecuencias correspondiente.")
+                            p_run.font.name = font_name
+                        else:
+                            p = doc.add_paragraph("Error: No se encontró el problema 2 (Distribución de Frecuencias).")
+                            for run in p.runs:
+                                run.font.name = font_name
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 2 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 2 de la tercera serie.")
+                    
+                    try:
+                        # Problema 3 - Diagrama de Tallo y Hoja
+                        if len(variante["tercera_serie"]) > 2:
+                            stem_leaf_data = variante["tercera_serie"][2]
+                            p = doc.add_paragraph()
+                            stem_run = p.add_run(f"3. {stem_leaf_data.get('title', 'Problema de Diagrama de Tallo y Hoja')}")
+                            stem_run.bold = True
+                            stem_run.font.name = font_name
+                            
+                            # Tabla para los datos del problema 3
+                            if 'data' in stem_leaf_data:
+                                table3 = doc.add_table(rows=3, cols=8)
+                                table3.style = 'Table Grid'
+                                
+                                # Llenar datos del problema 3
+                                idx = 0
+                                for i in range(3):
+                                    for j in range(8):
+                                        if idx < len(stem_leaf_data["data"]):
+                                            table3.cell(i, j).text = str(stem_leaf_data["data"][idx])
+                                            
+                                            # Aplicar fuente a todas las celdas
+                                            for paragraph in table3.cell(i, j).paragraphs:
+                                                for run in paragraph.runs:
+                                                    run.font.name = font_name
+                                            idx += 1
+                            else:
+                                p = doc.add_paragraph("Error: Datos incompletos para el problema de tallo y hoja.")
+                                for run in p.runs:
+                                    run.font.name = font_name
+                            
+                            p = doc.add_paragraph()
+                            a_run = p.add_run("a) ")
+                            a_run.bold = True
+                            a_run.font.name = font_name
+                            a_run.font.size = Pt(12)
+                            a_cont = p.add_run("Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.")
+                            a_cont.font.name = font_name
+                            
+                            p = doc.add_paragraph()
+                            b_run = p.add_run("b) ")
+                            b_run.bold = True
+                            b_run.font.name = font_name
+                            b_run.font.size = Pt(12)
+                            b_cont = p.add_run("Interprete los datos y explique brevemente sus resultados.")
+                            b_cont.font.name = font_name
+                        else:
+                            p = doc.add_paragraph("Error: No se encontró el problema 3 (Diagrama de Tallo y Hoja).")
+                            for run in p.runs:
+                                run.font.name = font_name
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 3 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 3 de la tercera serie.")
+                    
+                    try:
+                        # Problema 4 - Medidas de tendencia central
+                        if len(variante["tercera_serie"]) > 3:
+                            central_tendency_data = variante["tercera_serie"][3]
+                            p = doc.add_paragraph()
+                            central_run = p.add_run(f"4. {central_tendency_data.get('title', 'Problema de Medidas de Tendencia Central')}")
+                            central_run.bold = True
+                            central_run.font.name = font_name
+                            
+                            # Tabla para el problema 4
+                            if 'ranges' in central_tendency_data and 'count' in central_tendency_data:
+                                table4 = doc.add_table(rows=len(central_tendency_data["ranges"])+1, cols=2)
+                                table4.style = 'Table Grid'
+                                
+                                # Encabezados
+                                cell = table4.cell(0, 0)
+                                cell.text = "Precio en (Q)"
+                                cell.paragraphs[0].runs[0].bold = True
+                                cell.paragraphs[0].runs[0].font.name = font_name
+                                
+                                cell = table4.cell(0, 1)
+                                cell.text = "No. De productos"
+                                cell.paragraphs[0].runs[0].bold = True
+                                cell.paragraphs[0].runs[0].font.name = font_name
+                                
+                                # Datos
+                                for i, (rango, count) in enumerate(zip(central_tendency_data["ranges"], central_tendency_data["count"]), 1):
+                                    table4.cell(i, 0).text = rango
+                                    table4.cell(i, 1).text = str(count)
+                                    
+                                    # Aplicar fuente a todas las celdas de datos
+                                    for j in range(2):
+                                        for paragraph in table4.cell(i, j).paragraphs:
+                                            for run in paragraph.runs:
+                                                run.font.name = font_name
+                            else:
+                                p = doc.add_paragraph("Error: Datos incompletos para el problema de medidas de tendencia central.")
+                                for run in p.runs:
+                                    run.font.name = font_name
+                        else:
+                            p = doc.add_paragraph("Error: No se encontró el problema 4 (Medidas de Tendencia Central).")
+                            for run in p.runs:
+                                run.font.name = font_name
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 4 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 4 de la tercera serie.")
+            except Exception as e:
+                print(f"Error general al procesar la tercera serie: {str(e)}")
+                doc.add_paragraph("Error al cargar la tercera serie.")
+        
+        # Guardar el documento
+        try:
+            # Nombre de archivo estándar
+            filename = f'Examen_{variante_id}.docx'
+            simple_path = os.path.join(EXAMENES_FOLDER, filename)
+            
+            # Nombre detallado
+            detailed_filename = f'Examen_{seccion}_{tipo_evaluacion}_{variante_id}.docx'
+            detailed_path = os.path.join(output_dir, detailed_filename)
+            
+            # Guardar en ambas ubicaciones
+            print(f"Intentando guardar examen en: {detailed_path}")
+            doc.save(detailed_path)
+            print(f"Documento guardado en: {detailed_path}")
+            
+            print(f"Intentando guardar examen en: {simple_path}")
+            doc.save(simple_path)
+            print(f"Documento guardado en: {simple_path}")
+            
+            print(f"===== EXAMEN WORD CREADO EXITOSAMENTE =====\n")
+            return filename
+        except Exception as e:
+            print(f"Error al guardar el documento: {str(e)}")
+            # Intentar guardar en una ubicación alternativa
+            try:
+                alt_path = os.path.join(UPLOAD_FOLDER, filename)
+                print(f"Intentando guardar en ubicación alternativa: {alt_path}")
+                doc.save(alt_path)
+                print(f"Guardado en ubicación alternativa: {alt_path}")
+                return filename
+            except Exception as e2:
+                print(f"Error al guardar en ubicación alternativa: {str(e2)}")
+                return None
+            
+    except Exception as e:
+        print(f"Error global al crear examen: {str(e)}")
         traceback.print_exc()
         return None
 
