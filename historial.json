@@ -24,5 +24,49 @@
     "hoja": "HojaRespuestas_V1.pdf",
     "plantilla": "Plantilla_V1.pdf",
     "solucion_matematica": "Solucion_Matematica_V1.docx"
+  },
+  {
+    "id": "V1",
+    "seccion": "M3",
+    "tipo_evaluacion": "parcial1",
+    "tipo_texto": "Primer Parcial",
+    "fecha_generacion": "13/03/2025 22:24",
+    "timestamp": "20250313_222426",
+    "directorio": "M3_parcial1_20250313_222426",
+    "examen": "Examen_V1.docx",
+    "hoja": "HojaRespuestas_V1.pdf",
+    "plantilla": "Plantilla_V1.pdf",
+    "solucion_matematica": "Solucion_Matematica_V1.docx"
+  },
+  {
+    "id": "V1",
+    "seccion": "M4",
+    "tipo_evaluacion": "parcial1",
+    "tipo_texto": "Primer Parcial",
+    "fecha_generacion": "13/03/2025 22:47",
+    "timestamp": "20250313_224739",
+    "directorio": "M4_parcial1_20250313_224739",
+    "examen": "Examen_V1.docx",
+    "hoja": "HojaRespuestas_V1.pdf",
+    "plantilla": "Plantilla_V1.pdf",
+    "solucion_matematica": "Solucion_Matematica_V1.docx"
+  },
+  {
+    "id": "V1",
+    "seccion": "M5",
+    "tipo_evaluacion": "parcial1",
+    "tipo_texto": "Primer Parcial",
+    "fecha_generacion": "13/03/2025 22:54",
+    "timestamp": "20250313_225453",
+    "directorio": "M5_parcial1_20250313_225453",
+    "examen": "Examen_V1.docx",
+    "hoja": "HojaRespuestas_V1.pdf",
+    "plantilla": "Plantilla_V1.pdf",
+    "solucion_matematica": "Solucion_Matematica_V1.docx",
+    "licenciatura": "Licenciatura en Psicología Clínica y Social",
+    "nombre_curso": "",
+    "nombre_docente": "",
+    "anio": "",
+    "salon": "M5"
   }
 ]

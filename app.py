@@ -714,9 +714,12 @@ def generar_variante(variante_id="V1", seccion="A", tipo_evaluacion="parcial1"):
     return variante, respuestas
 
 # Función para crear examen de Word a partir de una variante
-def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo_path=None, plantilla_path=None):
+def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo_path=None, plantilla_path=None, 
+                  licenciatura="", nombre_curso="Estadística Básica", nombre_docente="Ing. Marco Antonio Jiménez", 
+                  anio="2025", salon=""):
     """
     Crea documento de examen con logo y usando plantilla opcional
+    Soporta reemplazo de placeholders para personalización
     """
     try:
         print(f"\n===== INICIANDO CREACIÓN DE EXAMEN WORD =====")
@@ -728,9 +731,17 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
         from docx import Document
         
         # Cargar la variante
-        with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
-            variante = json.load(f)
-            print(f"Variante cargada correctamente: {variante_id}")
+        try:
+            with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
+                variante = json.load(f)
+                print(f"Variante cargada correctamente: {variante_id}")
+        except Exception as e:
+            print(f"Error al cargar variante: {str(e)}")
+            variante = {
+                "primera_serie": [],
+                "segunda_serie": [],
+                "tercera_serie": []
+            }
         
         # Generar carpeta con timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -744,7 +755,6 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
             print(f"Plantilla encontrada: {plantilla_path}")
             try:
                 # Intentar abrir la plantilla para verificar que es un archivo .docx válido
-                
                 doc = Document(plantilla_path)
                 use_template = True
                 print(f"Plantilla cargada correctamente")
@@ -816,6 +826,7 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
             
             # Título Universidad
             try:
+                # Usar campos desde parameters o predeterminados
                 univ_para = title_cell.add_paragraph('Universidad Panamericana')
                 univ_para.style = 'TitleStyle'
                 univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -827,15 +838,22 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
                     run.bold = True
                     run.font.size = Pt(16)
             
-            # Facultad y curso
+            # Facultad y curso con placeholders
             try:
-                for header_text in ['Facultad de Humanidades', f'Estadística Básica - Sección {seccion}', 'Ing. Marco Antonio Jiménez', '2025']:
+                headers = [
+                    f'Facultad de {licenciatura or "Humanidades"}',
+                    f'{nombre_curso or "Estadística Básica"} - Sección {seccion}',
+                    f'{nombre_docente or "Ing. Marco Antonio Jiménez"}',
+                    f'{anio or "2025"}'
+                ]
+                
+                for header_text in headers:
                     header = title_cell.add_paragraph(header_text)
                     header.style = 'SubtitleStyle'
                     header.alignment = WD_ALIGN_PARAGRAPH.CENTER
             except Exception as e:
                 print(f"Error al aplicar estilo SubtitleStyle: {str(e)}")
-                for header_text in ['Facultad de Humanidades', f'Estadística Básica - Sección {seccion}', 'Ing. Marco Antonio Jiménez', '2025']:
+                for header_text in headers:
                     header = title_cell.add_paragraph(header_text)
                     header.alignment = WD_ALIGN_PARAGRAPH.CENTER
                     for run in header.runs:
@@ -844,8 +862,8 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
         except Exception as e:
             print(f"Error al crear encabezado: {str(e)}")
             doc.add_paragraph('Universidad Panamericana', style='Title')
-            doc.add_paragraph('Facultad de Humanidades', style='Subtitle')
-            doc.add_paragraph(f'Estadística Básica - Sección {seccion}', style='Subtitle')
+            doc.add_paragraph(f'Facultad de {licenciatura or "Humanidades"}', style='Subtitle')
+            doc.add_paragraph(f'{nombre_curso or "Estadística Básica"} - Sección {seccion}', style='Subtitle')
             
         # Título del examen
         try:
@@ -861,6 +879,11 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
             tipo_texto = tipo_eval_textos.get(tipo_evaluacion, 'Evaluación Parcial')
             exam_title = doc.add_heading(f'{tipo_texto} ({variante_id})', 1)
             exam_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            
+            # Añadir salón si se proporcionó
+            if salon:
+                salon_text = doc.add_paragraph(f"Salón: {salon}")
+                salon_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
         except Exception as e:
             print(f"Error al añadir título del examen: {str(e)}")
             p = doc.add_paragraph(f'{tipo_eval_textos.get(tipo_evaluacion, "Evaluación Parcial")} ({variante_id})')
@@ -896,16 +919,21 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
             
         # Preguntas de la primera serie
         try:
-            for i, pregunta in enumerate(variante["primera_serie"], 1):
-                question_para = doc.add_paragraph()
-                question_para.add_run(f"{i}. {pregunta['pregunta']}").bold = True
+            if "primera_serie" in variante and variante["primera_serie"]:
+                for i, pregunta in enumerate(variante["primera_serie"], 1):
+                    question_para = doc.add_paragraph()
+                    question_para.add_run(f"{i}. {pregunta['pregunta']}").bold = True
+                    
+                    for opcion in pregunta.get("opciones", []):
+                        option_para = doc.add_paragraph()
+                        option_para.style = 'List Bullet'
+                        option_para.add_run(opcion)
                 
-                for opcion in pregunta["opciones"]:
-                    option_para = doc.add_paragraph()
-                    option_para.style = 'List Bullet'
-                    option_para.add_run(opcion)
-            
-            doc.add_paragraph()
+                doc.add_paragraph()
+            else:
+                error_p = doc.add_paragraph()
+                error_p.add_run("Error: No se encontraron preguntas para la primera serie.").italic = True
+                doc.add_paragraph()
         except Exception as e:
             print(f"Error al añadir preguntas de la primera serie: {str(e)}")
             doc.add_paragraph("Error al cargar preguntas de la primera serie.")
@@ -919,15 +947,20 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
             instructions2.add_run('Para cada uno de los siguientes escenarios, identifique qué tipo de gráfica sería más apropiada para representar los datos y explique brevemente por qué. Las opciones son: Gráfica de barras, Gráfica circular (pastel), Histograma de Pearson, Ojiva de Galton o Polígono de frecuencias.')
             
             # Escenarios de la segunda serie
-            for i, escenario in enumerate(variante["segunda_serie"], 1):
-                escenario_para = doc.add_paragraph()
-                escenario_para.add_run(f"{i}. {escenario['escenario']}").bold = True
-                
-                for opcion in escenario["opciones"]:
-                    option_para = doc.add_paragraph()
-                    option_para.style = 'List Bullet'
-                    option_para.add_run(opcion)
-                
+            if "segunda_serie" in variante and variante["segunda_serie"]:
+                for i, escenario in enumerate(variante["segunda_serie"], 1):
+                    escenario_para = doc.add_paragraph()
+                    escenario_para.add_run(f"{i}. {escenario.get('escenario', '')}").bold = True
+                    
+                    for opcion in escenario.get("opciones", []):
+                        option_para = doc.add_paragraph()
+                        option_para.style = 'List Bullet'
+                        option_para.add_run(opcion)
+                    
+                    doc.add_paragraph()
+            else:
+                error_p = doc.add_paragraph()
+                error_p.add_run("Error: No se encontraron escenarios para la segunda serie.").italic = True
                 doc.add_paragraph()
         except Exception as e:
             print(f"Error al añadir preguntas de la segunda serie: {str(e)}")
@@ -941,106 +974,140 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
             instructions3.add_run('Instrucciones: ').bold = True
             instructions3.add_run('Desarrollar los ejercicios, dejando respaldo de sus operaciones. Asegúrese de escribir su respuesta final con lapicero; no se aceptarán respuestas escritas con lápiz. Mantenga su trabajo organizado y legible.')
             
-            # Problema 1 - Coeficiente de Gini
-            gini_data = variante["tercera_serie"][0]
-            doc.add_paragraph().add_run(f"1. {gini_data['title']}").bold = True
-            
-            # Tabla 1
-            table1 = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
-            table1.style = 'Table Grid'
-            table1.alignment = WD_TABLE_ALIGNMENT.CENTER
-            
-            # Encabezados
-            cell = table1.cell(0, 0)
-            cell.text = "Salario mensual en (Q)"
-            cell.paragraphs[0].runs[0].bold = True
-            
-            cell = table1.cell(0, 1)
-            cell.text = "No. De trabajadores"
-            cell.paragraphs[0].runs[0].bold = True
-            
-            # Datos
-            for i, rango in enumerate(gini_data["ranges"], 1):
-                table1.cell(i, 0).text = rango
-                table1.cell(i, 1).text = str(gini_data["workers"][i-1])
-            
-            doc.add_paragraph("a) Complete la tabla para calcular el coeficiente de Gini.")
-            doc.add_paragraph("b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
-            doc.add_paragraph("c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
+            # Verifica que tercera_serie esté presente
+            if "tercera_serie" not in variante or not variante["tercera_serie"]:
+                error_p = doc.add_paragraph()
+                error_p.add_run("Error: No se encontraron ejercicios para la tercera serie.").italic = True
+                doc.add_paragraph()
+            else:
+                try:
+                    # Problema 1 - Coeficiente de Gini
+                    if len(variante["tercera_serie"]) > 0:
+                        gini_data = variante["tercera_serie"][0]
+                        doc.add_paragraph().add_run(f"1. {gini_data.get('title', 'Problema de Coeficiente de Gini')}").bold = True
+                        
+                        # Tabla 1
+                        if 'ranges' in gini_data and 'workers' in gini_data:
+                            table1 = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
+                            table1.style = 'Table Grid'
+                            table1.alignment = WD_TABLE_ALIGNMENT.CENTER
+                            
+                            # Encabezados
+                            cell = table1.cell(0, 0)
+                            cell.text = "Salario mensual en (Q)"
+                            cell.paragraphs[0].runs[0].bold = True
+                            
+                            cell = table1.cell(0, 1)
+                            cell.text = "No. De trabajadores"
+                            cell.paragraphs[0].runs[0].bold = True
+                            
+                            # Datos
+                            for i, rango in enumerate(gini_data["ranges"], 1):
+                                table1.cell(i, 0).text = rango
+                                table1.cell(i, 1).text = str(gini_data["workers"][i-1])
+                        else:
+                            doc.add_paragraph("Error: Datos de tabla incompletos para el problema de Gini.")
+                        
+                        doc.add_paragraph("a) Complete la tabla para calcular el coeficiente de Gini.")
+                        doc.add_paragraph("b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
+                        doc.add_paragraph("c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
+                    else:
+                        doc.add_paragraph("Error: No se encontró el problema 1 (Coeficiente de Gini).")
+                except Exception as e:
+                    print(f"Error al añadir ejercicio 1 de la tercera serie: {str(e)}")
+                    doc.add_paragraph("Error al cargar el problema 1 de la tercera serie.")
+                
+                try:
+                    # Problema 2 - Distribución de frecuencias
+                    if len(variante["tercera_serie"]) > 1:
+                        sturgers_data = variante["tercera_serie"][1]
+                        doc.add_paragraph().add_run(f"2. {sturgers_data.get('title', 'Problema de Distribución de Frecuencias')}").bold = True
+                        
+                        # Tabla para los datos del problema 2
+                        if 'data' in sturgers_data:
+                            table2 = doc.add_table(rows=5, cols=5)
+                            table2.style = 'Table Grid'
+                            
+                            # Llenar datos del problema 2
+                            idx = 0
+                            for i in range(5):
+                                for j in range(5):
+                                    if idx < len(sturgers_data["data"]):
+                                        table2.cell(i, j).text = str(sturgers_data["data"][idx])
+                                        idx += 1
+                        else:
+                            doc.add_paragraph("Error: Datos incompletos para el problema de distribución de frecuencias.")
+                        
+                        doc.add_paragraph("Construya la tabla de distribución de frecuencias correspondiente.")
+                    else:
+                        doc.add_paragraph("Error: No se encontró el problema 2 (Distribución de Frecuencias).")
+                except Exception as e:
+                    print(f"Error al añadir ejercicio 2 de la tercera serie: {str(e)}")
+                    doc.add_paragraph("Error al cargar el problema 2 de la tercera serie.")
+                
+                try:
+                    # Problema 3 - Diagrama de Tallo y Hoja
+                    if len(variante["tercera_serie"]) > 2:
+                        stem_leaf_data = variante["tercera_serie"][2]
+                        doc.add_paragraph().add_run(f"3. {stem_leaf_data.get('title', 'Problema de Diagrama de Tallo y Hoja')}").bold = True
+                        
+                        # Tabla para los datos del problema 3
+                        if 'data' in stem_leaf_data:
+                            table3 = doc.add_table(rows=3, cols=8)
+                            table3.style = 'Table Grid'
+                            
+                            # Llenar datos del problema 3
+                            idx = 0
+                            for i in range(3):
+                                for j in range(8):
+                                    if idx < len(stem_leaf_data["data"]):
+                                        table3.cell(i, j).text = str(stem_leaf_data["data"][idx])
+                                        idx += 1
+                        else:
+                            doc.add_paragraph("Error: Datos incompletos para el problema de tallo y hoja.")
+                        
+                        doc.add_paragraph("a) Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.")
+                        doc.add_paragraph("b) Interprete los datos y explique brevemente sus resultados.")
+                    else:
+                        doc.add_paragraph("Error: No se encontró el problema 3 (Diagrama de Tallo y Hoja).")
+                except Exception as e:
+                    print(f"Error al añadir ejercicio 3 de la tercera serie: {str(e)}")
+                    doc.add_paragraph("Error al cargar el problema 3 de la tercera serie.")
+                
+                try:
+                    # Problema 4 - Medidas de tendencia central
+                    if len(variante["tercera_serie"]) > 3:
+                        central_tendency_data = variante["tercera_serie"][3]
+                        doc.add_paragraph().add_run(f"4. {central_tendency_data.get('title', 'Problema de Medidas de Tendencia Central')}").bold = True
+                        
+                        # Tabla para el problema 4
+                        if 'ranges' in central_tendency_data and 'count' in central_tendency_data:
+                            table4 = doc.add_table(rows=len(central_tendency_data["ranges"])+1, cols=2)
+                            table4.style = 'Table Grid'
+                            
+                            # Encabezados
+                            cell = table4.cell(0, 0)
+                            cell.text = "Precio en (Q)"
+                            cell.paragraphs[0].runs[0].bold = True
+                            
+                            cell = table4.cell(0, 1)
+                            cell.text = "No. De productos"
+                            cell.paragraphs[0].runs[0].bold = True
+                            
+                            # Datos
+                            for i, rango in enumerate(central_tendency_data["ranges"], 1):
+                                table4.cell(i, 0).text = rango
+                                table4.cell(i, 1).text = str(central_tendency_data["count"][i-1])
+                        else:
+                            doc.add_paragraph("Error: Datos incompletos para el problema de medidas de tendencia central.")
+                    else:
+                        doc.add_paragraph("Error: No se encontró el problema 4 (Medidas de Tendencia Central).")
+                except Exception as e:
+                    print(f"Error al añadir ejercicio 4 de la tercera serie: {str(e)}")
+                    doc.add_paragraph("Error al cargar el problema 4 de la tercera serie.")
         except Exception as e:
-            print(f"Error al añadir ejercicio 1 de la tercera serie: {str(e)}")
-            doc.add_paragraph("Error al cargar el problema 1 de la tercera serie.")
-            
-        try:
-            # Problema 2 - Distribución de frecuencias
-            sturgers_data = variante["tercera_serie"][1]
-            doc.add_paragraph().add_run(f"2. {sturgers_data['title']}").bold = True
-            
-            # Tabla para los datos del problema 2
-            table2 = doc.add_table(rows=5, cols=5)
-            table2.style = 'Table Grid'
-            
-            # Llenar datos del problema 2
-            idx = 0
-            for i in range(5):
-                for j in range(5):
-                    if idx < len(sturgers_data["data"]):
-                        table2.cell(i, j).text = str(sturgers_data["data"][idx])
-                        idx += 1
-            
-            doc.add_paragraph("Construya la tabla de distribución de frecuencias correspondiente.")
-        except Exception as e:
-            print(f"Error al añadir ejercicio 2 de la tercera serie: {str(e)}")
-            doc.add_paragraph("Error al cargar el problema 2 de la tercera serie.")
-            
-        try:
-            # Problema 3 - Diagrama de Tallo y Hoja
-            stem_leaf_data = variante["tercera_serie"][2]
-            doc.add_paragraph().add_run(f"3. {stem_leaf_data['title']}").bold = True
-            
-            # Tabla para los datos del problema 3
-            table3 = doc.add_table(rows=3, cols=8)
-            table3.style = 'Table Grid'
-            
-            # Llenar datos del problema 3
-            idx = 0
-            for i in range(3):
-                for j in range(8):
-                    if idx < len(stem_leaf_data["data"]):
-                        table3.cell(i, j).text = str(stem_leaf_data["data"][idx])
-                        idx += 1
-            
-            doc.add_paragraph("a) Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.")
-            doc.add_paragraph("b) Interprete los datos y explique brevemente sus resultados.")
-        except Exception as e:
-            print(f"Error al añadir ejercicio 3 de la tercera serie: {str(e)}")
-            doc.add_paragraph("Error al cargar el problema 3 de la tercera serie.")
-            
-        try:
-            # Problema 4 - Medidas de tendencia central
-            central_tendency_data = variante["tercera_serie"][3]
-            doc.add_paragraph().add_run(f"4. {central_tendency_data['title']}").bold = True
-            
-            # Tabla para el problema 4
-            table4 = doc.add_table(rows=len(central_tendency_data["ranges"])+1, cols=2)
-            table4.style = 'Table Grid'
-            
-            # Encabezados
-            cell = table4.cell(0, 0)
-            cell.text = "Precio en (Q)"
-            cell.paragraphs[0].runs[0].bold = True
-            
-            cell = table4.cell(0, 1)
-            cell.text = "No. De productos"
-            cell.paragraphs[0].runs[0].bold = True
-            
-            # Datos
-            for i, rango in enumerate(central_tendency_data["ranges"], 1):
-                table4.cell(i, 0).text = rango
-                table4.cell(i, 1).text = str(central_tendency_data["count"][i-1])
-        except Exception as e:
-            print(f"Error al añadir ejercicio 4 de la tercera serie: {str(e)}")
-            doc.add_paragraph("Error al cargar el problema 4 de la tercera serie.")
+            print(f"Error general al procesar la tercera serie: {str(e)}")
+            doc.add_paragraph("Error al cargar la tercera serie.")
         
         # Guardar el documento
         try:
@@ -1080,7 +1147,7 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
         print(f"Error global al crear examen: {str(e)}")
         traceback.print_exc()
         return None
-       
+
 def crear_plantilla_calificacion_detallada(variante_id, seccion="A", tipo_evaluacion="parcial1"):
     # Cargar respuestas de la variante
     with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
@@ -2470,74 +2537,235 @@ def crear_solucion_matematica_simplificada(variante_id, seccion="A", tipo_evalua
         return None
     
 # Rutas de la aplicación
+# Replace your current index route with this modified version
+# This specifically addresses the maximum recursion depth exceeded in comparison error
+
 @app.route('/')
 def index():
-    # Cargar el historial para obtener el orden cronológico
-    historial = cargar_historial()
-    
-    # Lista para almacenar las variantes
-    variantes = []
-    
-    # Set para evitar duplicados
-    variantes_procesadas = set()
-    
-    # Obtener las variantes del historial (más recientes primero)
-    for item in sorted(historial, key=lambda x: x.get('fecha_generacion', '0'), reverse=True):
-        variante_id = item.get('id')
+    """
+    Función principal que muestra la página de inicio con las variantes disponibles
+    """
+    # Cargar el historial para referencia
+    try:
+        historial_raw = cargar_historial()
         
-        # Evitar duplicados
-        if variante_id in variantes_procesadas:
-            continue
-        
-        # Verificar si existen los archivos
-        tiene_examen = os.path.exists(os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx'))
-        tiene_hoja = os.path.exists(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf'))
-        tiene_plantilla = os.path.exists(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf'))
-        
-        # Verificar si existe la solución matemática
-        solucion_matematica = item.get('solucion_matematica')
-        tiene_solucion = solucion_matematica and os.path.exists(os.path.join(PLANTILLAS_FOLDER, solucion_matematica))
-        
-        # Añadir la variante a la lista
-        variantes.append({
-            'id': variante_id,
-            'seccion': item.get('seccion', 'No especificada'),
-            'tipo_evaluacion': item.get('tipo_texto', 'No especificado'),
-            'tiene_examen': tiene_examen,
-            'tiene_hoja': tiene_hoja,
-            'tiene_plantilla': tiene_plantilla,
-            'solucion_matematica': solucion_matematica if tiene_solucion else None,
-            'tiene_solucion': tiene_solucion
-        })
-        
-        variantes_procesadas.add(variante_id)
-    
-    # Añadir variantes que podrían no estar en el historial
-    if os.path.exists(VARIANTES_FOLDER):
-        for archivo in os.listdir(VARIANTES_FOLDER):
-            if archivo.startswith('variante_') and archivo.endswith('.json'):
-                variante_id = archivo.replace('variante_', '').replace('.json', '')
+        # Crear una función para sanitizar el diccionario y prevenir recursión
+        def sanitize_dict(d):
+            """Crea una copia segura de un diccionario sin referencias circulares"""
+            if not isinstance(d, dict):
+                return d
                 
-                if variante_id in variantes_procesadas:
-                    continue
-                
-                # Verificaciones básicas
-                tiene_examen = os.path.exists(os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx'))
-                tiene_hoja = os.path.exists(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf'))
-                tiene_plantilla = os.path.exists(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf'))
-                
-                variantes.append({
-                    'id': variante_id,
-                    'seccion': 'No especificada',
-                    'tipo_evaluacion': 'No especificado',
-                    'tiene_examen': tiene_examen,
-                    'tiene_hoja': tiene_hoja,
-                    'tiene_plantilla': tiene_plantilla,
-                    'solucion_matematica': None,
-                    'tiene_solucion': False
-                })
+            # Crear un nuevo diccionario simplificado con solo las claves necesarias
+            safe_dict = {}
+            
+            # Lista de claves seguras que sabemos que no causan problemas
+            safe_keys = ['id', 'seccion', 'tipo_evaluacion', 'tipo_texto', 
+                        'examen', 'hoja', 'plantilla', 'solucion_matematica',
+                        'fecha_generacion', 'timestamp', 'directorio']
+                        
+            for key in safe_keys:
+                if key in d:
+                    # Evitar copiar objetos complejos que podrían causar recursión
+                    if isinstance(d[key], (str, int, float, bool, type(None))):
+                        safe_dict[key] = d[key]
+                    else:
+                        # Convertir a string para evitar recursión
+                        safe_dict[key] = str(d[key])
+            
+            return safe_dict
+        
+        # Sanitizar el historial
+        historial_safe = [sanitize_dict(item) for item in historial_raw]
+        
+        # Lista para almacenar las variantes
+        variantes = []
+        
+        # Set para evitar duplicados
+        variantes_procesadas = set()
+        
+        # Obtener las variantes del historial (más recientes primero)
+        # Limitar el número de elementos para evitar problemas
+        for item in historial_safe[:20]:  # Solo procesar hasta 20 entradas del historial
+            variante_id = item.get('id')
+            
+            # Evitar duplicados
+            if variante_id in variantes_procesadas:
+                continue
+            
+            # Verificar si existen los archivos
+            tiene_examen = os.path.exists(os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx'))
+            tiene_hoja = os.path.exists(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf'))
+            tiene_plantilla = os.path.exists(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf'))
+            
+            # Verificar si existe la solución matemática
+            solucion_matematica = item.get('solucion_matematica')
+            tiene_solucion = solucion_matematica and os.path.exists(os.path.join(PLANTILLAS_FOLDER, solucion_matematica))
+            
+            # Añadir la variante a la lista
+            variantes.append({
+                'id': variante_id,
+                'seccion': item.get('seccion', 'No especificada'),
+                'tipo_evaluacion': item.get('tipo_texto', 'No especificado'),
+                'tiene_examen': tiene_examen,
+                'tiene_hoja': tiene_hoja,
+                'tiene_plantilla': tiene_plantilla,
+                'solucion_matematica': solucion_matematica if tiene_solucion else None,
+                'tiene_solucion': tiene_solucion,
+                'directorio': item.get('directorio')
+            })
+            
+            variantes_procesadas.add(variante_id)
+            
+            # Limitar el número de variantes para evitar problemas
+            if len(variantes) >= 10:
+                break
+        
+        # Sanitizar las variantes para evitar cualquier recursión
+        variantes_safe = []
+        for v in variantes:
+            variantes_safe.append(sanitize_dict(v))
+        
+        return render_template('index.html', variantes=variantes_safe)
     
-    return render_template('index.html', variantes=variantes)
+    except Exception as e:
+        app.logger.error(f"Error en index: {str(e)}")
+        
+        # Devolver una página sencilla con el error
+        error_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Error</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                .error {{ background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; border-radius: 5px; }}
+                pre {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }}
+            </style>
+        </head>
+        <body>
+            <h1>Error en la aplicación</h1>
+            <div class="error">
+                <p><strong>Mensaje de error:</strong> {str(e)}</p>
+            </div>
+            <h2>Detalles técnicos:</h2>
+            <pre>{traceback.format_exc()}</pre>
+            
+            <h2>Por favor, intente:</h2>
+            <ul>
+                <li>Reiniciar la aplicación Flask</li>
+                <li>Verificar la integridad de los archivos JSON en la carpeta variantes</li>
+                <li>Contactar al administrador del sistema</li>
+            </ul>
+            
+            <p><a href="/">Intentar nuevamente</a></p>
+        </body>
+        </html>
+        """
+        return error_html
+
+# Add this to your app.py file
+
+@app.route('/diagnostico_datos')
+def diagnostico_datos():
+    """
+    Ruta para diagnosticar problemas con las estructuras de datos
+    """
+    try:
+        # Cargar el historial para obtener el orden cronológico
+        historial = cargar_historial()
+        
+        # Lista para almacenar las variantes (simplificada)
+        variantes_simplificadas = []
+        
+        # Set para evitar duplicados
+        variantes_procesadas = set()
+        
+        # Un contador para evitar bucles infinitos
+        contador = 0
+        max_iteraciones = 50  # Límite de seguridad
+        
+        # Diagnosticar el historial
+        historial_info = {
+            "largo": len(historial),
+            "tipos": []
+        }
+        
+        for item in historial:
+            if isinstance(item, dict):
+                historial_info["tipos"].append("diccionario")
+                
+                # Comprobar keys problemáticas que podrían causar recursión
+                if "historial" in item or "variantes" in item:
+                    historial_info["alerta"] = "¡Posible referencia circular encontrada en el historial!"
+            else:
+                historial_info["tipos"].append(type(item).__name__)
+        
+        # Intentar diagnosticar variantes de historial
+        try:
+            # Limitar a un máximo de 5 elementos para evitar problemas
+            for item in historial[:5]:
+                variante_id = item.get('id')
+                
+                if variante_id and variante_id not in variantes_procesadas:
+                    variantes_simplificadas.append({
+                        'id': variante_id,
+                        'seccion': item.get('seccion', 'No especificada'),
+                        'tipo_evaluacion': item.get('tipo_texto', 'No especificado')
+                    })
+                    
+                    variantes_procesadas.add(variante_id)
+                
+                contador += 1
+                if contador >= max_iteraciones:
+                    break
+        except Exception as e:
+            return f"Error al procesar historial: {str(e)}"
+        
+        # Intentar cargar variantes desde archivos
+        try:
+            contador = 0  # Reiniciar contador
+            
+            if os.path.exists(VARIANTES_FOLDER):
+                for archivo in os.listdir(VARIANTES_FOLDER):
+                    if archivo.startswith('variante_') and archivo.endswith('.json'):
+                        variante_id = archivo.replace('variante_', '').replace('.json', '')
+                        
+                        if variante_id in variantes_procesadas:
+                            continue
+                        
+                        # Simplemente añadir el ID, sin cargar el archivo completo
+                        variantes_simplificadas.append({
+                            'id': variante_id,
+                            'seccion': 'No especificada',
+                            'tipo_evaluacion': 'No especificado'
+                        })
+                        
+                        contador += 1
+                        if contador >= 10:  # Limitar a 10 elementos
+                            break
+        except Exception as e:
+            return f"Error al procesar archivos de variantes: {str(e)}"
+            
+        # Devolver un diagnóstico en formato texto
+        resultado = f"""
+        <h1>Diagnóstico de Datos</h1>
+        
+        <h2>Historial</h2>
+        <p>Número de elementos: {historial_info['largo']}</p>
+        <p>Tipos de elementos: {', '.join(historial_info['tipos'][:5])}</p>
+        
+        <h2>Variantes Encontradas</h2>
+        <ul>
+        {''.join([f'<li>{v["id"]} - {v["seccion"]} - {v["tipo_evaluacion"]}</li>' for v in variantes_simplificadas[:10]])}
+        </ul>
+        
+        <p><a href="/">Volver al inicio</a></p>
+        """
+        
+        return resultado
+        
+    except Exception as e:
+        return f"Error general en diagnóstico: {str(e)}"
 
 @app.route('/estudiantes', methods=['GET', 'POST'])
 def gestionar_estudiantes():
@@ -2641,12 +2869,21 @@ def generar_examen():
         seccion = request.form.get('seccion', 'A')
         tipo_evaluacion = request.form.get('tipo_evaluacion', 'parcial1')
         
+        # Obtener datos adicionales para personalización
+        licenciatura = request.form.get('licenciatura', '')
+        nombre_curso = request.form.get('nombre_curso', '')
+        nombre_docente = request.form.get('nombre_docente', '')
+        anio = request.form.get('anio', '')
+        salon = request.form.get('salon', '')
+        
         # Activar el modo de depuración detallada
         debug_mode = True
         
         if debug_mode:
             print("\n===== INICIANDO GENERACIÓN DE EXÁMENES =====")
             print(f"Variantes: {num_variantes}, Sección: {seccion}, Tipo: {tipo_evaluacion}")
+            print(f"Licenciatura: {licenciatura}, Curso: {nombre_curso}")
+            print(f"Docente: {nombre_docente}, Año: {anio}, Salón: {salon}")
             
             # Verificar directorios
             for folder in [EXAMENES_FOLDER, HOJAS_RESPUESTA_FOLDER, PLANTILLAS_FOLDER, VARIANTES_FOLDER]:
@@ -2717,7 +2954,18 @@ def generar_examen():
                 # Crear examen Word
                 if debug_mode:
                     print(f"Creando examen Word para variante {variante_id}...")
-                examen_filename = crear_examen_word(variante_id, seccion, tipo_evaluacion, logo_path, plantilla_path)
+                examen_filename = crear_examen_word(
+                    variante_id, 
+                    seccion, 
+                    tipo_evaluacion, 
+                    logo_path, 
+                    plantilla_path,
+                    licenciatura,
+                    nombre_curso,
+                    nombre_docente,
+                    anio,
+                    salon
+                )
                 if debug_mode:
                     if examen_filename:
                         print(f"Examen Word creado: {examen_filename}")
@@ -2814,7 +3062,12 @@ def generar_examen():
                 'examen': variante['examen'],
                 'hoja': variante['hoja'],
                 'plantilla': variante['plantilla'],
-                'solucion_matematica': variante['solucion_matematica']
+                'solucion_matematica': variante['solucion_matematica'],
+                'licenciatura': licenciatura,
+                'nombre_curso': nombre_curso,
+                'nombre_docente': nombre_docente,
+                'anio': anio,
+                'salon': salon
             })
         
         guardar_historial(historial)
@@ -2837,7 +3090,7 @@ def generar_examen():
         traceback.print_exc()
         flash(error_msg, 'danger')
         return redirect(url_for('index'))
-
+        
 @app.route('/verificar_generacion_documentos', methods=['GET'])
 def verificar_generacion_documentos():
     """
@@ -2942,69 +3195,91 @@ def verificar_generacion_documentos():
     
     return render_template('verificar_generacion.html', resultados=resultados)
 
+# Replace your current mostrar_historial route with this safer version
+
 @app.route('/historial')
 def mostrar_historial():
-    historial = cargar_historial()
-    return render_template('historial.html', historial=historial)
-
-@app.route('/cargar_examenes_escaneados', methods=['GET', 'POST'])
-def cargar_examenes_escaneados():
-    if request.method == 'POST':
-        if 'archivos' not in request.files:
-            flash('No se seleccionaron archivos', 'danger')
-            return redirect(request.url)
-            
-        archivos = request.files.getlist('archivos')
-        seccion = request.form.get('seccion', '')
-        tipo_evaluacion = request.form.get('tipo_evaluacion', '')
-        variante_id = request.form.get('variante_id', '')
+    """
+    Muestra el historial de exámenes generados, con protección contra recursión
+    """
+    try:
+        historial_raw = cargar_historial()
         
-        if not seccion or not tipo_evaluacion or not variante_id:
-            flash('Datos incompletos. Por favor complete todos los campos.', 'danger')
-            return redirect(request.url)
-        
-        # Crear carpeta específica para esta evaluación
-        eval_folder = os.path.join(EXAMENES_ESCANEADOS_FOLDER, f"{seccion}_{tipo_evaluacion}_{variante_id}")
-        if not os.path.exists(eval_folder):
-            os.makedirs(eval_folder)
-        
-        archivos_procesados = []
-        for archivo in archivos:
-            if archivo.filename == '':
-                continue
+        # Crear una función para sanitizar el diccionario y prevenir recursión
+        def sanitize_dict(d):
+            """Crea una copia segura de un diccionario sin referencias circulares"""
+            if not isinstance(d, dict):
+                return d
                 
-            if archivo and allowed_file(archivo.filename, {'pdf'}):
-                filename = secure_filename(archivo.filename)
-                filepath = os.path.join(eval_folder, filename)
-                archivo.save(filepath)
-                
-                # Procesar el archivo
-                resultado = procesar_examen_escaneado(filepath, variante_id)
-                if resultado:
-                    archivos_procesados.append({
-                        'nombre': filename,
-                        'resultado': resultado
-                    })
-        
-        if archivos_procesados:
-            flash(f'Se procesaron {len(archivos_procesados)} exámenes correctamente', 'success')
-            return render_template('resultados_procesamiento.html', 
-                                  archivos=archivos_procesados, 
-                                  seccion=seccion,
-                                  tipo_evaluacion=tipo_evaluacion,
-                                  variante_id=variante_id)
-        else:
-            flash('No se pudo procesar ningún archivo', 'warning')
+            # Crear un nuevo diccionario simplificado con solo las claves necesarias
+            safe_dict = {}
             
-    # Obtener variantes disponibles para mostrar en el formulario
-    variantes = []
-    if os.path.exists(VARIANTES_FOLDER):
-        for archivo in os.listdir(VARIANTES_FOLDER):
-            if archivo.startswith('variante_') and archivo.endswith('.json'):
-                variante_id = archivo.replace('variante_', '').replace('.json', '')
-                variantes.append(variante_id)
+            # Lista de claves seguras que sabemos que no causan problemas
+            safe_keys = ['id', 'seccion', 'tipo_evaluacion', 'tipo_texto', 
+                        'examen', 'hoja', 'plantilla', 'solucion_matematica',
+                        'fecha_generacion', 'timestamp', 'directorio']
+                        
+            for key in safe_keys:
+                if key in d:
+                    # Evitar copiar objetos complejos que podrían causar recursión
+                    if isinstance(d[key], (str, int, float, bool, type(None))):
+                        safe_dict[key] = d[key]
+                    else:
+                        # Convertir a string para evitar recursión
+                        safe_dict[key] = str(d[key])
+            
+            return safe_dict
+        
+        # Sanitizar el historial - NO usar filtros como sort() que pueden causar recursión
+        historial_safe = [sanitize_dict(item) for item in historial_raw]
+        
+        # Si quieres ordenar, hazlo de una forma segura usando sorted() y una key simple
+        # Esto evita comparaciones complejas que podrían causar recursión
+        try:
+            historial_safe = sorted(
+                historial_safe, 
+                key=lambda x: x.get('fecha_generacion', '0') if isinstance(x.get('fecha_generacion', '0'), str) else '0', 
+                reverse=True
+            )
+        except Exception as sort_err:
+            app.logger.error(f"Error al ordenar historial: {str(sort_err)}")
+            # Continuar con el historial sin ordenar
+        
+        # Limitar el número de elementos para evitar problemas
+        historial_safe = historial_safe[:50]  # Mostrar solo los últimos 50 elementos
+        
+        return render_template('historial.html', historial=historial_safe)
     
-    return render_template('cargar_examenes.html', variantes=variantes)
+    except Exception as e:
+        app.logger.error(f"Error en mostrar_historial: {str(e)}")
+        
+        # Devolver una página sencilla con el error
+        error_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Error</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                .error {{ background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 20px; border-radius: 5px; }}
+                pre {{ background-color: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }}
+            </style>
+        </head>
+        <body>
+            <h1>Error al cargar historial</h1>
+            <div class="error">
+                <p><strong>Mensaje de error:</strong> {str(e)}</p>
+            </div>
+            <pre>{traceback.format_exc()}</pre>
+            <p><a href="/">Volver al inicio</a></p>
+        </body>
+        </html>
+        """
+        return error_html
+
+@app.route('/cargar_examenes')
+def cargar_examenes_escaneados():
+    return render_template('cargar_examenes.html')
 
 @app.route('/editar_variante/<variante_id>')
 def editar_variante(variante_id):

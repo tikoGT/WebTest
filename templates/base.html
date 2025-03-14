@@ -77,30 +77,61 @@
 </head>
 <body>
     <!-- Navbar -->
-    <!-- Añadir esto dentro del navbar en base.html, en la lista navbar-nav -->
-<li class="nav-item dropdown">
-    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-        <i class="fas fa-tools me-1"></i>Herramientas
-    </a>
-    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-        <li>
-            <a class="dropdown-item" href="{{ url_for('diagnostico') }}">
-                <i class="fas fa-stethoscope me-1"></i>Diagnóstico del Sistema
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-chart-bar me-2"></i>Generador de Exámenes de Estadística
             </a>
-        </li>
-        <li>
-            <a class="dropdown-item" href="{{ url_for('verificar_generacion_documentos') }}">
-                <i class="fas fa-file-medical-alt me-1"></i>Verificar Generación de Documentos
-            </a>
-        </li>
-        <li><hr class="dropdown-divider"></li>
-        <li>
-            <a class="dropdown-item" href="{{ url_for('mostrar_historial') }}">
-                <i class="fas fa-history me-1"></i>Historial Completo
-            </a>
-        </li>
-    </ul>
-</li>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-home me-1"></i>Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('gestionar_estudiantes') }}">
+                            <i class="fas fa-users me-1"></i>Estudiantes
+                        </a>
+                    </li>
+                    <!-- Comentada la línea que causa el error hasta que esté definida la ruta correcta -->
+                    <!-- 
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('cargar_examenes_escaneados') }}">
+                            <i class="fas fa-upload me-1"></i>Cargar Exámenes
+                        </a>
+                    </li>
+                    -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-tools me-1"></i>Herramientas
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('diagnostico') }}">
+                                    <i class="fas fa-stethoscope me-1"></i>Diagnóstico del Sistema
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('verificar_generacion_documentos') }}">
+                                    <i class="fas fa-file-medical-alt me-1"></i>Verificar Generación de Documentos
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('mostrar_historial') }}">
+                                    <i class="fas fa-history me-1"></i>Historial Completo
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
     <!-- Flash Messages -->
     <div class="container mt-3">
@@ -126,7 +157,7 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p class="mb-0">© 2024 Generador de Exámenes de Estadística | Universidad Panamericana</p>
+            <p class="mb-0">© 2025 Generador de Exámenes de Estadística | Universidad Panamericana</p>
         </div>
     </footer>
 

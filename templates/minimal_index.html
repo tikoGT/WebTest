@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Generador de Exámenes de Estadística{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs me-2"></i>Generar Nuevos Exámenes
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('generar_examen') }}" method="post" enctype="multipart/form-data">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="num_variantes" class="form-label">Número de Variantes:</label>
+                            <input type="number" class="form-control" id="num_variantes" name="num_variantes" min="1" max="10" value="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="seccion" class="form-label">Sección del Curso:</label>
+                            <input type="text" class="form-control" id="seccion" name="seccion" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="tipo_evaluacion" class="form-label">Tipo de Evaluación:</label>
+                            <select class="form-select" id="tipo_evaluacion" name="tipo_evaluacion">
+                                <option value="parcial1">Primer Parcial</option>
+                                <option value="parcial2">Segundo Parcial</option>
+                                <option value="final">Examen Final</option>
+                                <option value="corto">Evaluación Corta</option>
+                                <option value="recuperacion">Recuperación</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-magic me-1"></i>Generar Exámenes
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle me-2"></i>Simplificando la interfaz para solucionar problemas técnicos.
+        </div>
+    </div>
+</div>
+
+{% endblock %}
