@@ -68,5 +68,41 @@
     "nombre_docente": "",
     "anio": "",
     "salon": "M5"
+  },
+  {
+    "id": "V1",
+    "seccion": "MM6",
+    "tipo_evaluacion": "parcial1",
+    "tipo_texto": "Primer Parcial",
+    "fecha_generacion": "13/03/2025 23:17",
+    "timestamp": "20250313_231726",
+    "directorio": "MM6_parcial1_20250313_231726",
+    "examen": "Examen_V1.docx",
+    "hoja": "HojaRespuestas_V1.pdf",
+    "plantilla": "Plantilla_V1.pdf",
+    "solucion_matematica": "Solucion_Matematica_Detallada_V1.docx",
+    "licenciatura": "",
+    "nombre_curso": "",
+    "nombre_docente": "",
+    "anio": "",
+    "salon": ""
+  },
+  {
+    "id": "V1",
+    "seccion": "MM7",
+    "tipo_evaluacion": "parcial1",
+    "tipo_texto": "Primer Parcial",
+    "fecha_generacion": "13/03/2025 23:22",
+    "timestamp": "20250313_232237",
+    "directorio": "MM7_parcial1_20250313_232237",
+    "examen": "Examen_V1.docx",
+    "hoja": "HojaRespuestas_V1.pdf",
+    "plantilla": "Plantilla_V1.pdf",
+    "solucion_matematica": "Solucion_Matematica_Detallada_V1.docx",
+    "licenciatura": "",
+    "nombre_curso": "",
+    "nombre_docente": "",
+    "anio": "",
+    "salon": ""
   }
 ]

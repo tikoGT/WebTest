@@ -2,7 +2,7 @@
   "id": "V1",
   "primera_serie": [
     {
-      "pregunta": "¿Cuál es el método que permite calcular el número de grupos, intervalos o clases a construer para una table de distribución de frecuencias?",
+      "pregunta": "¿Cuál es el método que permite calcular el número de grupos, intervalos o clases a construir para una tablade distribución de frecuencias?",
       "opciones": [
         "Método de mínimos cuadrados",
         "Coeficiente de Gini",

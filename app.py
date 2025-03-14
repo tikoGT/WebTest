@@ -148,7 +148,7 @@ preguntas_base_primera = [
         "respuesta_correcta": 0  # Índice de "Verdadero"
     },
     {
-        "pregunta": "¿Cuál es el método que permite calcular el número de grupos, intervalos o clases a construer para una table de distribución de frecuencias?",
+        "pregunta": "¿Cuál es el método que permite calcular el número de grupos, intervalos o clases a construir para una tablade distribución de frecuencias?",
         "opciones": ["Método de mínimos cuadrados", "Coeficiente de Gini", "Método Sturgers", "La regla empírica"],
         "respuesta_correcta": 2  # Índice de "Método Sturgers"
     },
@@ -729,6 +729,10 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
         
         # Importar Document aquí para asegurarse de que está disponible
         from docx import Document
+        from docx.shared import Pt, Inches, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.table import WD_TABLE_ALIGNMENT
+        from docx.enum.style import WD_STYLE_TYPE
         
         # Cargar la variante
         try:
@@ -749,365 +753,541 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
         os.makedirs(output_dir, exist_ok=True)
         print(f"Carpeta de salida creada: {output_dir}")
         
-        # Verificar plantilla
+        # Verificar plantilla y su formato
         use_template = False
         if plantilla_path and os.path.exists(plantilla_path):
             print(f"Plantilla encontrada: {plantilla_path}")
+            
+            # Detectar si es una plantilla con placeholders o una plantilla de formato general
             try:
                 # Intentar abrir la plantilla para verificar que es un archivo .docx válido
-                doc = Document(plantilla_path)
-                use_template = True
-                print(f"Plantilla cargada correctamente")
+                doc_temp = Document(plantilla_path)
+                
+                # Buscar placeholders en la plantilla
+                has_placeholders = False
+                for paragraph in doc_temp.paragraphs:
+                    if any(marker in paragraph.text for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}', '{variante}']):
+                        has_placeholders = True
+                        break
+                
+                # También buscar en tablas
+                if not has_placeholders:
+                    for table in doc_temp.tables:
+                        for row in table.rows:
+                            for cell in row.cells:
+                                for paragraph in cell.paragraphs:
+                                    if any(marker in paragraph.text for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}', '{variante}']):
+                                        has_placeholders = True
+                                        break
+                                if has_placeholders:
+                                    break
+                            if has_placeholders:
+                                break
+                        if has_placeholders:
+                            break
+                
+                if has_placeholders:
+                    print("Plantilla con placeholders detectada. Utilizando procesamiento especial.")
+                    doc = procesar_plantilla_examen(
+                        plantilla_path, 
+                        variante_id, 
+                        seccion, 
+                        tipo_evaluacion, 
+                        variante,
+                        licenciatura,
+                        nombre_curso,
+                        nombre_docente,
+                        anio,
+                        salon
+                    )
+                    
+                    if doc:
+                        use_template = True
+                        print("Plantilla procesada correctamente con reemplazo de placeholders.")
+                    else:
+                        print("Error al procesar plantilla con placeholders. Creando examen estándar.")
+                        doc = Document()
+                else:
+                    print("Plantilla sin placeholders detectada. Usando como base de formato.")
+                    doc = Document(plantilla_path)
+                    use_template = True
             except Exception as e:
-                print(f"Error al cargar plantilla: {str(e)}")
+                print(f"Error al analizar plantilla: {str(e)}")
                 print(f"Se creará un documento nuevo en su lugar")
                 doc = Document()
         else:
             print(f"No se encontró plantilla. Se creará un documento nuevo.")
             doc = Document()
         
-        # Crear estilos personalizados necesarios
-        styles = doc.styles
-        
-        # Verificar/crear estilo 'TitleStyle'
-        try:
-            if 'TitleStyle' not in [s.name for s in styles]:
-                title_style = styles.add_style('TitleStyle', WD_STYLE_TYPE.PARAGRAPH)
-                title_style.font.bold = True
-                title_style.font.size = Pt(16)
-                print("Estilo 'TitleStyle' creado")
-                
-            # Verificar/crear estilo 'SubtitleStyle'
-            if 'SubtitleStyle' not in [s.name for s in styles]:
-                subtitle_style = styles.add_style('SubtitleStyle', WD_STYLE_TYPE.PARAGRAPH)
-                subtitle_style.font.italic = True
-                subtitle_style.font.size = Pt(12)
-                print("Estilo 'SubtitleStyle' creado")
-        except Exception as e:
-            print(f"Error al crear estilos: {str(e)}")
-            print("Continuando con estilos predeterminados...")
-        
-        # Configurar márgenes
-        try:
-            sections = doc.sections
-            for section in sections:
-                section.top_margin = Inches(0.7)
-                section.bottom_margin = Inches(0.7)
-                section.left_margin = Inches(0.8)
-                section.right_margin = Inches(0.8)
-            print("Márgenes configurados")
-        except Exception as e:
-            print(f"Error al configurar márgenes: {str(e)}")
-            print("Continuando con márgenes predeterminados...")
+        # Si estamos usando una plantilla con placeholders ya procesada, solo guardamos y terminamos
+        if use_template and 'doc' in locals() and doc and any(marker in paragraph.text for paragraph in doc.paragraphs 
+                                                           for marker in ['{primera_serie}', '{segunda_serie}', '{tercera_serie}']):
+            # No es necesario añadir contenido, ya fue reemplazado en procesar_plantilla_examen
+            print("Usando plantilla con placeholders ya procesados.")
+        else:
+            # Continuar con el proceso normal de creación/llenado de documento
+            # Crear o verificar los estilos necesarios
+            styles = doc.styles
             
-        # Encabezado con tabla
-        try:
-            header_table = doc.add_table(rows=1, cols=2)
-            header_table.style = 'Table Grid'
+            # Verificar/crear estilos básicos de encabezado
+            style_names = [s.name for s in styles]
             
-            # Celda para logo
-            logo_cell = header_table.cell(0, 0)
-            logo_paragraph = logo_cell.paragraphs[0]
-            
-            # Verificar que el logo existe y añadirlo
-            if logo_path and os.path.exists(logo_path):
+            # Crear Heading 1 si no existe
+            if 'Heading 1' not in style_names:
                 try:
-                    logo_paragraph.add_run().add_picture(logo_path, width=Inches(1.0))
-                    print(f"Logo añadido desde {logo_path}")
+                    heading1 = styles.add_style('Heading 1', WD_STYLE_TYPE.PARAGRAPH)
+                    heading1.font.bold = True
+                    heading1.font.size = Pt(18)
+                    print("Estilo 'Heading 1' creado")
                 except Exception as e:
-                    print(f"Error al añadir logo: {str(e)}")
+                    print(f"Error al crear estilo 'Heading 1': {str(e)}")
+                    # Crear un estilo alternativo
+                    if 'Title' in style_names:
+                        heading1 = styles['Title']
+                        print("Usando estilo 'Title' como alternativa")
+                    else:
+                        # Si no hay alternativa, crear un estilo personalizado
+                        heading1 = styles.add_style('CustomHeading1', WD_STYLE_TYPE.PARAGRAPH)
+                        heading1.font.bold = True
+                        heading1.font.size = Pt(18)
+                        print("Estilo 'CustomHeading1' creado como alternativa")
+            
+            # Crear Heading 2 si no existe
+            if 'Heading 2' not in style_names:
+                try:
+                    heading2 = styles.add_style('Heading 2', WD_STYLE_TYPE.PARAGRAPH)
+                    heading2.font.bold = True
+                    heading2.font.size = Pt(16)
+                    print("Estilo 'Heading 2' creado")
+                except Exception as e:
+                    print(f"Error al crear estilo 'Heading 2': {str(e)}")
+                    # Crear un estilo alternativo
+                    if 'Subtitle' in style_names:
+                        heading2 = styles['Subtitle']
+                        print("Usando estilo 'Subtitle' como alternativa")
+                    else:
+                        # Si no hay alternativa, crear un estilo personalizado
+                        heading2 = styles.add_style('CustomHeading2', WD_STYLE_TYPE.PARAGRAPH)
+                        heading2.font.bold = True
+                        heading2.font.size = Pt(16)
+                        print("Estilo 'CustomHeading2' creado como alternativa")
+            
+            # Crear List Bullet si no existe
+            if 'List Bullet' not in style_names:
+                try:
+                    list_bullet = styles.add_style('List Bullet', WD_STYLE_TYPE.PARAGRAPH)
+                    list_bullet.font.size = Pt(12)
+                    print("Estilo 'List Bullet' creado")
+                except Exception as e:
+                    print(f"Error al crear estilo 'List Bullet': {str(e)}")
+                    # Crear un estilo personalizado
+                    list_bullet = styles.add_style('CustomListBullet', WD_STYLE_TYPE.PARAGRAPH)
+                    list_bullet.font.size = Pt(12)
+                    print("Estilo 'CustomListBullet' creado como alternativa")
+            
+            # Verificar/crear estilo 'TitleStyle'
+            try:
+                if 'TitleStyle' not in style_names:
+                    title_style = styles.add_style('TitleStyle', WD_STYLE_TYPE.PARAGRAPH)
+                    title_style.font.bold = True
+                    title_style.font.size = Pt(16)
+                    print("Estilo 'TitleStyle' creado")
+                    
+                # Verificar/crear estilo 'SubtitleStyle'
+                if 'SubtitleStyle' not in style_names:
+                    subtitle_style = styles.add_style('SubtitleStyle', WD_STYLE_TYPE.PARAGRAPH)
+                    subtitle_style.font.italic = True
+                    subtitle_style.font.size = Pt(12)
+                    print("Estilo 'SubtitleStyle' creado")
+            except Exception as e:
+                print(f"Error al crear estilos: {str(e)}")
+                print("Continuando con estilos predeterminados...")
+            
+            # Configurar márgenes
+            try:
+                sections = doc.sections
+                for section in sections:
+                    section.top_margin = Inches(0.7)
+                    section.bottom_margin = Inches(0.7)
+                    section.left_margin = Inches(0.8)
+                    section.right_margin = Inches(0.8)
+                print("Márgenes configurados")
+            except Exception as e:
+                print(f"Error al configurar márgenes: {str(e)}")
+                print("Continuando con márgenes predeterminados...")
+                
+            # Encabezado con tabla
+            try:
+                header_table = doc.add_table(rows=1, cols=2)
+                header_table.style = 'Table Grid'
+                
+                # Celda para logo
+                logo_cell = header_table.cell(0, 0)
+                logo_paragraph = logo_cell.paragraphs[0]
+                
+                # Verificar que el logo existe y añadirlo
+                if logo_path and os.path.exists(logo_path):
+                    try:
+                        logo_paragraph.add_run().add_picture(logo_path, width=Inches(1.0))
+                        print(f"Logo añadido desde {logo_path}")
+                    except Exception as e:
+                        print(f"Error al añadir logo: {str(e)}")
+                        logo_paragraph.text = "LOGO"
+                else:
+                    print(f"Logo no encontrado en {logo_path}")
                     logo_paragraph.text = "LOGO"
-            else:
-                print(f"Logo no encontrado en {logo_path}")
-                logo_paragraph.text = "LOGO"
-        
-            # Celda para título
-            title_cell = header_table.cell(0, 1)
             
-            # Título Universidad
-            try:
-                # Usar campos desde parameters o predeterminados
-                univ_para = title_cell.add_paragraph('Universidad Panamericana')
-                univ_para.style = 'TitleStyle'
-                univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                # Celda para título
+                title_cell = header_table.cell(0, 1)
+                
+                # Título Universidad
+                try:
+                    # Usar campos desde parameters o predeterminados
+                    univ_para = title_cell.add_paragraph('Universidad Panamericana')
+                    try:
+                        univ_para.style = 'TitleStyle'
+                    except:
+                        # Si falla al aplicar el estilo, aplicar formato directamente
+                        for run in univ_para.runs:
+                            run.bold = True
+                            run.font.size = Pt(16)
+                    univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception as e:
+                    print(f"Error al aplicar estilo TitleStyle: {str(e)}")
+                    univ_para = title_cell.add_paragraph('Universidad Panamericana')
+                    univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in univ_para.runs:
+                        run.bold = True
+                        run.font.size = Pt(16)
+                
+                # Facultad y curso con placeholders
+                try:
+                    headers = [
+                        f'Facultad de {licenciatura or "Humanidades"}',
+                        f'{nombre_curso or "Estadística Básica"} - Sección {seccion}',
+                        f'{nombre_docente or "Ing. Marco Antonio Jiménez"}',
+                        f'{anio or "2025"}'
+                    ]
+                    
+                    for header_text in headers:
+                        header = title_cell.add_paragraph(header_text)
+                        try:
+                            header.style = 'SubtitleStyle'
+                        except:
+                            # Si falla al aplicar el estilo, aplicar formato directamente
+                            for run in header.runs:
+                                run.italic = True
+                                run.font.size = Pt(12)
+                        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception as e:
+                    print(f"Error al aplicar estilo SubtitleStyle: {str(e)}")
+                    for header_text in headers:
+                        header = title_cell.add_paragraph(header_text)
+                        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                        for run in header.runs:
+                            run.italic = True
+                            run.font.size = Pt(12)
             except Exception as e:
-                print(f"Error al aplicar estilo TitleStyle: {str(e)}")
-                univ_para = title_cell.add_paragraph('Universidad Panamericana')
-                univ_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for run in univ_para.runs:
+                print(f"Error al crear encabezado: {str(e)}")
+                doc.add_paragraph('Universidad Panamericana').bold = True
+                doc.add_paragraph(f'Facultad de {licenciatura or "Humanidades"}')
+                doc.add_paragraph(f'{nombre_curso or "Estadística Básica"} - Sección {seccion}')
+                
+            # Título del examen
+            try:
+                tipo_eval_textos = {
+                    'parcial1': 'Primer Examen Parcial',
+                    'parcial2': 'Segundo Examen Parcial',
+                    'final': 'Examen Final',
+                    'corto': 'Evaluación Corta',
+                    'recuperacion': 'Examen de Recuperación',
+                    'test': 'Prueba de Evaluación'
+                }
+                
+                tipo_texto = tipo_eval_textos.get(tipo_evaluacion, 'Evaluación Parcial')
+                
+                # Intentar añadir con Heading 1
+                try:
+                    exam_title = doc.add_heading(f'{tipo_texto} ({variante_id})', 1)
+                    exam_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception as e:
+                    print(f"Error al usar Heading 1: {str(e)}")
+                    # Alternativa usando párrafo normal
+                    p = doc.add_paragraph(f'{tipo_texto} ({variante_id})')
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in p.runs:
+                        run.bold = True
+                        run.font.size = Pt(18)
+                
+                # Añadir salón si se proporcionó
+                if salon:
+                    salon_text = doc.add_paragraph(f"Salón: {salon}")
+                    salon_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            except Exception as e:
+                print(f"Error al añadir título del examen: {str(e)}")
+                p = doc.add_paragraph(f'{tipo_eval_textos.get(tipo_evaluacion, "Evaluación Parcial")} ({variante_id})')
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                for run in p.runs:
                     run.bold = True
-                    run.font.size = Pt(16)
+                    run.font.size = Pt(14)
             
-            # Facultad y curso con placeholders
+            # Información del estudiante
+            doc.add_paragraph()
+            student_info = doc.add_paragraph('Nombre del estudiante: _____________________________________________________________')
+            
+            info_line = doc.add_paragraph()
+            info_line.add_run('Fecha: ____________________ ')
+            info_line.add_run('Carné: ___________________ ')
+            info_line.add_run('Firma: ________________________')
+            
+            doc.add_paragraph()
+            
+            # Primera serie
             try:
-                headers = [
-                    f'Facultad de {licenciatura or "Humanidades"}',
-                    f'{nombre_curso or "Estadística Básica"} - Sección {seccion}',
-                    f'{nombre_docente or "Ing. Marco Antonio Jiménez"}',
-                    f'{anio or "2025"}'
-                ]
+                # Intentar añadir con Heading 2
+                try:
+                    serie1 = doc.add_heading('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)', 2)
+                except Exception as e:
+                    print(f"Error al usar Heading 2: {str(e)}")
+                    # Alternativa usando párrafo normal
+                    serie1 = doc.add_paragraph('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)')
+                    for run in serie1.runs:
+                        run.bold = True
+                        run.font.size = Pt(16)
                 
-                for header_text in headers:
-                    header = title_cell.add_paragraph(header_text)
-                    header.style = 'SubtitleStyle'
-                    header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                instructions = doc.add_paragraph()
+                instructions.add_run('Instrucciones: ').bold = True
+                instructions.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta. Subraye con lapicero la opción u opciones que considere correcta(s) para cada pregunta. Las respuestas hechas con lápiz no serán aceptadas como válidas.')
             except Exception as e:
-                print(f"Error al aplicar estilo SubtitleStyle: {str(e)}")
-                for header_text in headers:
-                    header = title_cell.add_paragraph(header_text)
-                    header.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in header.runs:
-                        run.italic = True
-                        run.font.size = Pt(12)
-        except Exception as e:
-            print(f"Error al crear encabezado: {str(e)}")
-            doc.add_paragraph('Universidad Panamericana', style='Title')
-            doc.add_paragraph(f'Facultad de {licenciatura or "Humanidades"}', style='Subtitle')
-            doc.add_paragraph(f'{nombre_curso or "Estadística Básica"} - Sección {seccion}', style='Subtitle')
-            
-        # Título del examen
-        try:
-            tipo_eval_textos = {
-                'parcial1': 'Primer Examen Parcial',
-                'parcial2': 'Segundo Examen Parcial',
-                'final': 'Examen Final',
-                'corto': 'Evaluación Corta',
-                'recuperacion': 'Examen de Recuperación',
-                'test': 'Prueba de Evaluación'
-            }
-            
-            tipo_texto = tipo_eval_textos.get(tipo_evaluacion, 'Evaluación Parcial')
-            exam_title = doc.add_heading(f'{tipo_texto} ({variante_id})', 1)
-            exam_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
-            # Añadir salón si se proporcionó
-            if salon:
-                salon_text = doc.add_paragraph(f"Salón: {salon}")
-                salon_text.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        except Exception as e:
-            print(f"Error al añadir título del examen: {str(e)}")
-            p = doc.add_paragraph(f'{tipo_eval_textos.get(tipo_evaluacion, "Evaluación Parcial")} ({variante_id})')
-            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            for run in p.runs:
-                run.bold = True
-                run.font.size = Pt(14)
-        
-        # Información del estudiante
-        doc.add_paragraph()
-        student_info = doc.add_paragraph('Nombre del estudiante: _____________________________________________________________')
-        
-        info_line = doc.add_paragraph()
-        info_line.add_run('Fecha: ____________________ ')
-        info_line.add_run('Carné: ___________________ ')
-        info_line.add_run('Firma: ________________________')
-        
-        doc.add_paragraph()
-        
-        # Primera serie
-        try:
-            serie1 = doc.add_heading('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)', 2)
-            
-            instructions = doc.add_paragraph()
-            instructions.add_run('Instrucciones: ').bold = True
-            instructions.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta. Subraye con lapicero la opción u opciones que considere correcta(s) para cada pregunta. Las respuestas hechas con lápiz no serán aceptadas como válidas.')
-        except Exception as e:
-            print(f"Error al añadir encabezado de primera serie: {str(e)}")
-            doc.add_paragraph('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)')
-            p = doc.add_paragraph()
-            p.add_run('Instrucciones: ').bold = True
-            p.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta...')
-            
-        # Preguntas de la primera serie
-        try:
-            if "primera_serie" in variante and variante["primera_serie"]:
-                for i, pregunta in enumerate(variante["primera_serie"], 1):
-                    question_para = doc.add_paragraph()
-                    question_para.add_run(f"{i}. {pregunta['pregunta']}").bold = True
-                    
-                    for opcion in pregunta.get("opciones", []):
-                        option_para = doc.add_paragraph()
-                        option_para.style = 'List Bullet'
-                        option_para.add_run(opcion)
+                print(f"Error al añadir encabezado de primera serie: {str(e)}")
+                doc.add_paragraph('Primera serie (Valor de cada respuesta correcta 4 puntos. Valor total de la serie 40 puntos)')
+                p = doc.add_paragraph()
+                p.add_run('Instrucciones: ').bold = True
+                p.add_run('Lea cuidadosamente cada una de las preguntas y sus opciones de respuesta...')
                 
-                doc.add_paragraph()
-            else:
-                error_p = doc.add_paragraph()
-                error_p.add_run("Error: No se encontraron preguntas para la primera serie.").italic = True
-                doc.add_paragraph()
-        except Exception as e:
-            print(f"Error al añadir preguntas de la primera serie: {str(e)}")
-            doc.add_paragraph("Error al cargar preguntas de la primera serie.")
-            
-        # Segunda serie
-        try:
-            serie2 = doc.add_heading('Segunda serie (Valor de cada respuesta correcta 3 puntos. Valor total de la serie 20 puntos)', 2)
-            
-            instructions2 = doc.add_paragraph()
-            instructions2.add_run('Instrucciones: ').bold = True
-            instructions2.add_run('Para cada uno de los siguientes escenarios, identifique qué tipo de gráfica sería más apropiada para representar los datos y explique brevemente por qué. Las opciones son: Gráfica de barras, Gráfica circular (pastel), Histograma de Pearson, Ojiva de Galton o Polígono de frecuencias.')
-            
-            # Escenarios de la segunda serie
-            if "segunda_serie" in variante and variante["segunda_serie"]:
-                for i, escenario in enumerate(variante["segunda_serie"], 1):
-                    escenario_para = doc.add_paragraph()
-                    escenario_para.add_run(f"{i}. {escenario.get('escenario', '')}").bold = True
-                    
-                    for opcion in escenario.get("opciones", []):
-                        option_para = doc.add_paragraph()
-                        option_para.style = 'List Bullet'
-                        option_para.add_run(opcion)
+            # Preguntas de la primera serie
+            try:
+                if "primera_serie" in variante and variante["primera_serie"]:
+                    for i, pregunta in enumerate(variante["primera_serie"], 1):
+                        question_para = doc.add_paragraph()
+                        question_para.add_run(f"{i}. {pregunta['pregunta']}").bold = True
+                        
+                        for opcion in pregunta.get("opciones", []):
+                            try:
+                                # Intentar usar estilo List Bullet
+                                option_para = doc.add_paragraph(style='List Bullet')
+                                option_para.add_run(opcion)
+                            except Exception as e:
+                                print(f"Error al usar estilo List Bullet: {str(e)}")
+                                # Alternativa usando párrafo normal con viñeta manual
+                                option_para = doc.add_paragraph()
+                                option_para.add_run(f"• {opcion}")
+                                option_para.paragraph_format.left_indent = Inches(0.25)
                     
                     doc.add_paragraph()
-            else:
-                error_p = doc.add_paragraph()
-                error_p.add_run("Error: No se encontraron escenarios para la segunda serie.").italic = True
-                doc.add_paragraph()
-        except Exception as e:
-            print(f"Error al añadir preguntas de la segunda serie: {str(e)}")
-            doc.add_paragraph("Error al cargar preguntas de la segunda serie.")
-            
-        # Tercera serie
-        try:
-            serie3 = doc.add_heading('Tercera serie (Valor de cada respuesta correcta 10 puntos. Valor total de la serie 40 puntos)', 2)
-            
-            instructions3 = doc.add_paragraph()
-            instructions3.add_run('Instrucciones: ').bold = True
-            instructions3.add_run('Desarrollar los ejercicios, dejando respaldo de sus operaciones. Asegúrese de escribir su respuesta final con lapicero; no se aceptarán respuestas escritas con lápiz. Mantenga su trabajo organizado y legible.')
-            
-            # Verifica que tercera_serie esté presente
-            if "tercera_serie" not in variante or not variante["tercera_serie"]:
-                error_p = doc.add_paragraph()
-                error_p.add_run("Error: No se encontraron ejercicios para la tercera serie.").italic = True
-                doc.add_paragraph()
-            else:
-                try:
-                    # Problema 1 - Coeficiente de Gini
-                    if len(variante["tercera_serie"]) > 0:
-                        gini_data = variante["tercera_serie"][0]
-                        doc.add_paragraph().add_run(f"1. {gini_data.get('title', 'Problema de Coeficiente de Gini')}").bold = True
-                        
-                        # Tabla 1
-                        if 'ranges' in gini_data and 'workers' in gini_data:
-                            table1 = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
-                            table1.style = 'Table Grid'
-                            table1.alignment = WD_TABLE_ALIGNMENT.CENTER
-                            
-                            # Encabezados
-                            cell = table1.cell(0, 0)
-                            cell.text = "Salario mensual en (Q)"
-                            cell.paragraphs[0].runs[0].bold = True
-                            
-                            cell = table1.cell(0, 1)
-                            cell.text = "No. De trabajadores"
-                            cell.paragraphs[0].runs[0].bold = True
-                            
-                            # Datos
-                            for i, rango in enumerate(gini_data["ranges"], 1):
-                                table1.cell(i, 0).text = rango
-                                table1.cell(i, 1).text = str(gini_data["workers"][i-1])
-                        else:
-                            doc.add_paragraph("Error: Datos de tabla incompletos para el problema de Gini.")
-                        
-                        doc.add_paragraph("a) Complete la tabla para calcular el coeficiente de Gini.")
-                        doc.add_paragraph("b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
-                        doc.add_paragraph("c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
-                    else:
-                        doc.add_paragraph("Error: No se encontró el problema 1 (Coeficiente de Gini).")
-                except Exception as e:
-                    print(f"Error al añadir ejercicio 1 de la tercera serie: {str(e)}")
-                    doc.add_paragraph("Error al cargar el problema 1 de la tercera serie.")
+                else:
+                    error_p = doc.add_paragraph()
+                    error_p.add_run("Error: No se encontraron preguntas para la primera serie.").italic = True
+                    doc.add_paragraph()
+            except Exception as e:
+                print(f"Error al añadir preguntas de la primera serie: {str(e)}")
+                doc.add_paragraph("Error al cargar preguntas de la primera serie.")
                 
+            # Segunda serie
+            try:
+                # Intentar añadir con Heading 2
                 try:
-                    # Problema 2 - Distribución de frecuencias
-                    if len(variante["tercera_serie"]) > 1:
-                        sturgers_data = variante["tercera_serie"][1]
-                        doc.add_paragraph().add_run(f"2. {sturgers_data.get('title', 'Problema de Distribución de Frecuencias')}").bold = True
-                        
-                        # Tabla para los datos del problema 2
-                        if 'data' in sturgers_data:
-                            table2 = doc.add_table(rows=5, cols=5)
-                            table2.style = 'Table Grid'
-                            
-                            # Llenar datos del problema 2
-                            idx = 0
-                            for i in range(5):
-                                for j in range(5):
-                                    if idx < len(sturgers_data["data"]):
-                                        table2.cell(i, j).text = str(sturgers_data["data"][idx])
-                                        idx += 1
-                        else:
-                            doc.add_paragraph("Error: Datos incompletos para el problema de distribución de frecuencias.")
-                        
-                        doc.add_paragraph("Construya la tabla de distribución de frecuencias correspondiente.")
-                    else:
-                        doc.add_paragraph("Error: No se encontró el problema 2 (Distribución de Frecuencias).")
+                    serie2 = doc.add_heading('Segunda serie (Valor de cada respuesta correcta 3 puntos. Valor total de la serie 20 puntos)', 2)
                 except Exception as e:
-                    print(f"Error al añadir ejercicio 2 de la tercera serie: {str(e)}")
-                    doc.add_paragraph("Error al cargar el problema 2 de la tercera serie.")
+                    print(f"Error al usar Heading 2: {str(e)}")
+                    # Alternativa usando párrafo normal
+                    serie2 = doc.add_paragraph('Segunda serie (Valor de cada respuesta correcta 3 puntos. Valor total de la serie 20 puntos)')
+                    for run in serie2.runs:
+                        run.bold = True
+                        run.font.size = Pt(16)
                 
-                try:
-                    # Problema 3 - Diagrama de Tallo y Hoja
-                    if len(variante["tercera_serie"]) > 2:
-                        stem_leaf_data = variante["tercera_serie"][2]
-                        doc.add_paragraph().add_run(f"3. {stem_leaf_data.get('title', 'Problema de Diagrama de Tallo y Hoja')}").bold = True
-                        
-                        # Tabla para los datos del problema 3
-                        if 'data' in stem_leaf_data:
-                            table3 = doc.add_table(rows=3, cols=8)
-                            table3.style = 'Table Grid'
-                            
-                            # Llenar datos del problema 3
-                            idx = 0
-                            for i in range(3):
-                                for j in range(8):
-                                    if idx < len(stem_leaf_data["data"]):
-                                        table3.cell(i, j).text = str(stem_leaf_data["data"][idx])
-                                        idx += 1
-                        else:
-                            doc.add_paragraph("Error: Datos incompletos para el problema de tallo y hoja.")
-                        
-                        doc.add_paragraph("a) Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.")
-                        doc.add_paragraph("b) Interprete los datos y explique brevemente sus resultados.")
-                    else:
-                        doc.add_paragraph("Error: No se encontró el problema 3 (Diagrama de Tallo y Hoja).")
-                except Exception as e:
-                    print(f"Error al añadir ejercicio 3 de la tercera serie: {str(e)}")
-                    doc.add_paragraph("Error al cargar el problema 3 de la tercera serie.")
+                instructions2 = doc.add_paragraph()
+                instructions2.add_run('Instrucciones: ').bold = True
+                instructions2.add_run('Para cada uno de los siguientes escenarios, identifique qué tipo de gráfica sería más apropiada para representar los datos y explique brevemente por qué. Las opciones son: Gráfica de barras, Gráfica circular (pastel), Histograma de Pearson, Ojiva de Galton o Polígono de frecuencias.')
                 
-                try:
-                    # Problema 4 - Medidas de tendencia central
-                    if len(variante["tercera_serie"]) > 3:
-                        central_tendency_data = variante["tercera_serie"][3]
-                        doc.add_paragraph().add_run(f"4. {central_tendency_data.get('title', 'Problema de Medidas de Tendencia Central')}").bold = True
+                # Escenarios de la segunda serie
+                if "segunda_serie" in variante and variante["segunda_serie"]:
+                    for i, escenario in enumerate(variante["segunda_serie"], 1):
+                        escenario_para = doc.add_paragraph()
+                        escenario_para.add_run(f"{i}. {escenario.get('escenario', '')}").bold = True
                         
-                        # Tabla para el problema 4
-                        if 'ranges' in central_tendency_data and 'count' in central_tendency_data:
-                            table4 = doc.add_table(rows=len(central_tendency_data["ranges"])+1, cols=2)
-                            table4.style = 'Table Grid'
-                            
-                            # Encabezados
-                            cell = table4.cell(0, 0)
-                            cell.text = "Precio en (Q)"
-                            cell.paragraphs[0].runs[0].bold = True
-                            
-                            cell = table4.cell(0, 1)
-                            cell.text = "No. De productos"
-                            cell.paragraphs[0].runs[0].bold = True
-                            
-                            # Datos
-                            for i, rango in enumerate(central_tendency_data["ranges"], 1):
-                                table4.cell(i, 0).text = rango
-                                table4.cell(i, 1).text = str(central_tendency_data["count"][i-1])
-                        else:
-                            doc.add_paragraph("Error: Datos incompletos para el problema de medidas de tendencia central.")
-                    else:
-                        doc.add_paragraph("Error: No se encontró el problema 4 (Medidas de Tendencia Central).")
+                        for opcion in escenario.get("opciones", []):
+                            try:
+                                # Intentar usar estilo List Bullet
+                                option_para = doc.add_paragraph(style='List Bullet')
+                                option_para.add_run(opcion)
+                            except Exception as e:
+                                print(f"Error al usar estilo List Bullet: {str(e)}")
+                                # Alternativa usando párrafo normal con viñeta manual
+                                option_para = doc.add_paragraph()
+                                option_para.add_run(f"• {opcion}")
+                                option_para.paragraph_format.left_indent = Inches(0.25)
+                        
+                        doc.add_paragraph()
+                else:
+                    error_p = doc.add_paragraph()
+                    error_p.add_run("Error: No se encontraron escenarios para la segunda serie.").italic = True
+                    doc.add_paragraph()
+            except Exception as e:
+                print(f"Error al añadir preguntas de la segunda serie: {str(e)}")
+                doc.add_paragraph("Error al cargar preguntas de la segunda serie.")
+                
+            # Tercera serie
+            try:
+                # Intentar añadir con Heading 2
+                try:
+                    serie3 = doc.add_heading('Tercera serie (Valor de cada respuesta correcta 10 puntos. Valor total de la serie 40 puntos)', 2)
                 except Exception as e:
-                    print(f"Error al añadir ejercicio 4 de la tercera serie: {str(e)}")
-                    doc.add_paragraph("Error al cargar el problema 4 de la tercera serie.")
-        except Exception as e:
-            print(f"Error general al procesar la tercera serie: {str(e)}")
-            doc.add_paragraph("Error al cargar la tercera serie.")
+                    print(f"Error al usar Heading 2: {str(e)}")
+                    # Alternativa usando párrafo normal
+                    serie3 = doc.add_paragraph('Tercera serie (Valor de cada respuesta correcta 10 puntos. Valor total de la serie 40 puntos)')
+                    for run in serie3.runs:
+                        run.bold = True
+                        run.font.size = Pt(16)
+                
+                instructions3 = doc.add_paragraph()
+                instructions3.add_run('Instrucciones: ').bold = True
+                instructions3.add_run('Desarrollar los ejercicios, dejando respaldo de sus operaciones. Asegúrese de escribir su respuesta final con lapicero; no se aceptarán respuestas escritas con lápiz. Mantenga su trabajo organizado y legible.')
+                
+                # Verifica que tercera_serie esté presente
+                if "tercera_serie" not in variante or not variante["tercera_serie"]:
+                    error_p = doc.add_paragraph()
+                    error_p.add_run("Error: No se encontraron ejercicios para la tercera serie.").italic = True
+                    doc.add_paragraph()
+                else:
+                    try:
+                        # Problema 1 - Coeficiente de Gini
+                        if len(variante["tercera_serie"]) > 0:
+                            gini_data = variante["tercera_serie"][0]
+                            doc.add_paragraph().add_run(f"1. {gini_data.get('title', 'Problema de Coeficiente de Gini')}").bold = True
+                            
+                            # Tabla 1
+                            if 'ranges' in gini_data and 'workers' in gini_data:
+                                table1 = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
+                                table1.style = 'Table Grid'
+                                table1.alignment = WD_TABLE_ALIGNMENT.CENTER
+                                
+                                # Encabezados
+                                cell = table1.cell(0, 0)
+                                cell.text = "Salario mensual en (Q)"
+                                cell.paragraphs[0].runs[0].bold = True
+                                
+                                cell = table1.cell(0, 1)
+                                cell.text = "No. De trabajadores"
+                                cell.paragraphs[0].runs[0].bold = True
+                                
+                                # Datos
+                                for i, rango in enumerate(gini_data["ranges"], 1):
+                                    table1.cell(i, 0).text = rango
+                                    table1.cell(i, 1).text = str(gini_data["workers"][i-1])
+                            else:
+                                doc.add_paragraph("Error: Datos de tabla incompletos para el problema de Gini.")
+                            
+                            doc.add_paragraph("a) Complete la tabla para calcular el coeficiente de Gini.")
+                            doc.add_paragraph("b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
+                            doc.add_paragraph("c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
+                        else:
+                            doc.add_paragraph("Error: No se encontró el problema 1 (Coeficiente de Gini).")
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 1 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 1 de la tercera serie.")
+                    
+                    try:
+                        # Problema 2 - Distribución de frecuencias
+                        if len(variante["tercera_serie"]) > 1:
+                            sturgers_data = variante["tercera_serie"][1]
+                            doc.add_paragraph().add_run(f"2. {sturgers_data.get('title', 'Problema de Distribución de Frecuencias')}").bold = True
+                            
+                            # Tabla para los datos del problema 2
+                            if 'data' in sturgers_data:
+                                table2 = doc.add_table(rows=5, cols=5)
+                                table2.style = 'Table Grid'
+                                
+                                # Llenar datos del problema 2
+                                idx = 0
+                                for i in range(5):
+                                    for j in range(5):
+                                        if idx < len(sturgers_data["data"]):
+                                            table2.cell(i, j).text = str(sturgers_data["data"][idx])
+                                            idx += 1
+                            else:
+                                doc.add_paragraph("Error: Datos incompletos para el problema de distribución de frecuencias.")
+                            
+                            doc.add_paragraph("Construya la tabla de distribución de frecuencias correspondiente.")
+                        else:
+                            doc.add_paragraph("Error: No se encontró el problema 2 (Distribución de Frecuencias).")
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 2 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 2 de la tercera serie.")
+                    
+                    try:
+                        # Problema 3 - Diagrama de Tallo y Hoja
+                        if len(variante["tercera_serie"]) > 2:
+                            stem_leaf_data = variante["tercera_serie"][2]
+                            doc.add_paragraph().add_run(f"3. {stem_leaf_data.get('title', 'Problema de Diagrama de Tallo y Hoja')}").bold = True
+                            
+                            # Tabla para los datos del problema 3
+                            if 'data' in stem_leaf_data:
+                                table3 = doc.add_table(rows=3, cols=8)
+                                table3.style = 'Table Grid'
+                                
+                                # Llenar datos del problema 3
+                                idx = 0
+                                for i in range(3):
+                                    for j in range(8):
+                                        if idx < len(stem_leaf_data["data"]):
+                                            table3.cell(i, j).text = str(stem_leaf_data["data"][idx])
+                                            idx += 1
+                            else:
+                                doc.add_paragraph("Error: Datos incompletos para el problema de tallo y hoja.")
+                            
+                            doc.add_paragraph("a) Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.")
+                            doc.add_paragraph("b) Interprete los datos y explique brevemente sus resultados.")
+                        else:
+                            doc.add_paragraph("Error: No se encontró el problema 3 (Diagrama de Tallo y Hoja).")
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 3 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 3 de la tercera serie.")
+                    
+                    try:
+                        # Problema 4 - Medidas de tendencia central
+                        if len(variante["tercera_serie"]) > 3:
+                            central_tendency_data = variante["tercera_serie"][3]
+                            doc.add_paragraph().add_run(f"4. {central_tendency_data.get('title', 'Problema de Medidas de Tendencia Central')}").bold = True
+                            
+                            # Tabla para el problema 4
+                            if 'ranges' in central_tendency_data and 'count' in central_tendency_data:
+                                table4 = doc.add_table(rows=len(central_tendency_data["ranges"])+1, cols=2)
+                                table4.style = 'Table Grid'
+                                
+                                # Encabezados
+                                cell = table4.cell(0, 0)
+                                cell.text = "Precio en (Q)"
+                                cell.paragraphs[0].runs[0].bold = True
+                                
+                                cell = table4.cell(0, 1)
+                                cell.text = "No. De productos"
+                                cell.paragraphs[0].runs[0].bold = True
+                                
+                                # Datos
+                                for i, rango in enumerate(central_tendency_data["ranges"], 1):
+                                    table4.cell(i, 0).text = rango
+                                    table4.cell(i, 1).text = str(central_tendency_data["count"][i-1])
+                            else:
+                                doc.add_paragraph("Error: Datos incompletos para el problema de medidas de tendencia central.")
+                        else:
+                            doc.add_paragraph("Error: No se encontró el problema 4 (Medidas de Tendencia Central).")
+                    except Exception as e:
+                        print(f"Error al añadir ejercicio 4 de la tercera serie: {str(e)}")
+                        doc.add_paragraph("Error al cargar el problema 4 de la tercera serie.")
+            except Exception as e:
+                print(f"Error general al procesar la tercera serie: {str(e)}")
+                doc.add_paragraph("Error al cargar la tercera serie.")
         
         # Guardar el documento
         try:
@@ -1147,7 +1327,7 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
         print(f"Error global al crear examen: {str(e)}")
         traceback.print_exc()
         return None
-
+        
 def crear_plantilla_calificacion_detallada(variante_id, seccion="A", tipo_evaluacion="parcial1"):
     # Cargar respuestas de la variante
     with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
@@ -1982,9 +2162,16 @@ def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parc
     guardándola en una carpeta organizada con timestamp.
     """
     try:
+        print(f"\n===== INICIANDO CREACIÓN DE PLANTILLA DE CALIFICACIÓN =====")
+        print(f"Variante: {variante_id}, Sección: {seccion}, Tipo: {tipo_evaluacion}")
+        
         # Cargar respuestas de la variante
         with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
             respuestas = json.load(f)
+        
+        # Cargar la variante para acceder a los textos de preguntas y opciones
+        with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
+            variante = json.load(f)
         
         # Crear una imagen en blanco (tamaño carta)
         width, height = 2480, 3508  # Tamaño A4 a 300 DPI
@@ -1997,12 +2184,18 @@ def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parc
             subtitle_font = ImageFont.truetype("arial.ttf", 60)
             text_font = ImageFont.truetype("arial.ttf", 48)
             small_font = ImageFont.truetype("arial.ttf", 36)
-        except:
-            print("No se pudieron cargar las fuentes personalizadas, usando fuentes predeterminadas")
+            question_font = ImageFont.truetype("arial.ttf", 40)
+            option_font = ImageFont.truetype("arial.ttf", 38)
+        except Exception as e:
+            print(f"Error al cargar fuentes: {str(e)}")
+            # Usar fuentes predeterminadas como respaldo
             title_font = ImageFont.load_default()
             subtitle_font = ImageFont.load_default()
             text_font = ImageFont.load_default()
             small_font = ImageFont.load_default()
+            question_font = ImageFont.load_default()
+            option_font = ImageFont.load_default()
+            print("Usando fuentes predeterminadas")
         
         # Convertir el tipo de evaluación a texto legible
         tipo_textos = {
@@ -2010,7 +2203,8 @@ def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parc
             'parcial2': 'SEGUNDO PARCIAL',
             'final': 'EXAMEN FINAL',
             'corto': 'EVALUACIÓN CORTA',
-            'recuperacion': 'RECUPERACIÓN'
+            'recuperacion': 'RECUPERACIÓN',
+            'test': 'PRUEBA'
         }
         tipo_texto = tipo_textos.get(tipo_evaluacion, 'EVALUACIÓN PARCIAL')
         
@@ -2023,93 +2217,154 @@ def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parc
         fecha_actual = datetime.now().strftime("%d/%m/%Y")
         draw.text((width-200, 450), f"Fecha: {fecha_actual}", fill="black", font=small_font, anchor="rm")
         
-        # Primera Serie - Marcar respuestas correctas
+        # === PRIMERA SERIE - MEJORADA ===
+        # Título de primera serie
         draw.text((width//2, 550), "PRIMERA SERIE (40 PUNTOS)", fill="black", font=text_font, anchor="mm")
         
-        y_pos = 650
-        for i, respuesta in enumerate(respuestas["primera_serie"], 1):
-            # Número de pregunta
-            draw.text((200, y_pos), f"{i}.", fill="black", font=text_font)
+        margin_left = 150  # Margen izquierdo para preguntas
+        margin_option = 80  # Espacio entre opciones
+        
+        # Calcular número de preguntas en la primera serie
+        num_preguntas = len(respuestas["primera_serie"])
+        
+        # Calcular si necesitamos dos columnas
+        use_two_columns = num_preguntas > 5
+        col_width = width // 2 - 50 if use_two_columns else width - 300
+        
+        # Variables para posicionamiento
+        y_pos = 650  # Posición vertical inicial
+        col2_start = width // 2 + 50  # Inicio de la segunda columna
+        max_y_serie1 = 0  # Para llevar registro de la altura máxima
+        
+        # Para cada pregunta en la primera serie
+        for i, (resp_idx, pregunta) in enumerate(zip(respuestas["primera_serie"], variante["primera_serie"]), 1):
+            # Determinar columna
+            current_x = col2_start if use_two_columns and i > 5 else margin_left
             
-            # Marcar solo la respuesta correcta
-            x_pos = 350
-            for j in range(5):  # Opciones a-e
-                if j == respuesta:  # Si es la respuesta correcta
-                    draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", fill="black", width=3)
-                    letra_color = "white"
-                else:
-                    draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", width=1)
-                    letra_color = "black"
-                
-                # Añadir la letra de la opción
-                draw.text((x_pos+25, y_pos), chr(97+j), fill=letra_color, font=text_font, anchor="mm")
-                x_pos += 120
-            
-            y_pos += 80
-            
-            # Si hay demasiadas preguntas, ajustar para que entren en la página
-            if i == 7:  # Después de 7 preguntas, reajustar el espaciado
+            # Si pasamos a la segunda columna, reiniciar y_pos
+            if use_two_columns and i == 6:
                 y_pos = 650
-                x_pos = width // 2 + 100  # Mover a la segunda columna
-        
-        # Segunda Serie - Marcar respuestas correctas
-        draw.text((width//2, 1350), "SEGUNDA SERIE (20 PUNTOS)", fill="black", font=text_font, anchor="mm")
-        
-        y_pos = 1450
-        for i, respuesta in enumerate(respuestas["segunda_serie"], 1):
-            # Número de pregunta
-            draw.text((200, y_pos), f"{i}.", fill="black", font=text_font)
             
-            # Marcar solo la respuesta correcta
-            x_pos = 350
-            for j in range(5):  # Opciones a-e
-                if j == respuesta:  # Si es la respuesta correcta
-                    draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", fill="black", width=3)
+            # Texto truncado de la pregunta para que quepa
+            pregunta_text = pregunta.get('pregunta', 'Pregunta no disponible')
+            if len(pregunta_text) > 60:  # Limitar longitud de texto
+                pregunta_text = pregunta_text[:57] + "..."
+            
+            # Número de pregunta
+            draw.text((current_x, y_pos), f"{i}.", fill="black", font=question_font)
+            
+            # Opciones
+            x_pos = current_x + 100
+            opciones = pregunta.get('opciones', ['Opción no disponible'])
+            
+            # Dibujar solo 5 opciones como máximo (a-e)
+            num_opciones = min(5, len(opciones))
+            
+            for j in range(num_opciones):
+                # Si es la respuesta correcta, dibujar círculo negro
+                if j == resp_idx:
+                    draw.ellipse((x_pos-25, y_pos-25, x_pos+25, y_pos+25), outline="black", fill="black", width=3)
                     letra_color = "white"
                 else:
-                    draw.ellipse((x_pos, y_pos-25, x_pos+50, y_pos+25), outline="black", width=1)
+                    draw.ellipse((x_pos-25, y_pos-25, x_pos+25, y_pos+25), outline="black", width=1)
                     letra_color = "black"
                 
-                # Añadir la letra de la opción
-                draw.text((x_pos+25, y_pos), chr(97+j), fill=letra_color, font=text_font, anchor="mm")
-                x_pos += 120
+                # Letra de opción (a, b, c, etc.)
+                draw.text((x_pos, y_pos), chr(97+j), fill=letra_color, font=option_font, anchor="mm")
+                
+                x_pos += margin_option
             
-            y_pos += 80
+            # Actualizar posición vertical para la siguiente pregunta
+            y_pos += 100
+            max_y_serie1 = max(max_y_serie1, y_pos)
         
-        # Tercera Serie - Respuestas numéricas
-        draw.text((width//2, 2000), "TERCERA SERIE (40 PUNTOS)", fill="black", font=text_font, anchor="mm")
+        # === SEGUNDA SERIE - MEJORADA ===
+        # Calcular punto de inicio para la segunda serie
+        y_pos = max_y_serie1 + 100
         
-        y_pos = 2100
-        # Coeficiente de Gini
-        draw.text((200, y_pos), f"1. Coeficiente de Gini: {respuestas['tercera_serie']['gini']}", fill="black", font=text_font)
-        
+        # Título de segunda serie
+        draw.text((width//2, y_pos), "SEGUNDA SERIE (20 PUNTOS)", fill="black", font=text_font, anchor="mm")
         y_pos += 100
-        # Distribución de frecuencias
-        draw.text((200, y_pos), "2. Distribución de frecuencias:", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"K: {respuestas['tercera_serie']['dist_frecuencias']['k']}", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"Rango: {respuestas['tercera_serie']['dist_frecuencias']['rango']}", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"Amplitud: {respuestas['tercera_serie']['dist_frecuencias']['amplitud']}", fill="black", font=text_font)
         
-        y_pos += 100
-        # Tallo y Hoja
-        draw.text((200, y_pos), "3. Tallo y Hoja:", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"Moda: {respuestas['tercera_serie']['tallo_hoja']['moda']}", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"Intervalo: {respuestas['tercera_serie']['tallo_hoja']['intervalo']}", fill="black", font=text_font)
+        # Variables para posicionamiento
+        margin_left = 150  # Margen izquierdo para preguntas
         
+        # Para cada escenario en la segunda serie
+        for i, (resp_idx, escenario) in enumerate(zip(respuestas["segunda_serie"], variante["segunda_serie"]), 1):
+            # Texto truncado del escenario
+            escenario_text = escenario.get('escenario', 'Escenario no disponible')
+            if len(escenario_text) > 60:  # Limitar longitud de texto
+                escenario_text = escenario_text[:57] + "..."
+            
+            # Número de escenario
+            draw.text((margin_left, y_pos), f"{i}.", fill="black", font=question_font)
+            
+            # Opciones
+            x_pos = margin_left + 100
+            opciones = escenario.get('opciones', ['Opción no disponible'])
+            
+            # Dibujar solo 5 opciones como máximo (a-e)
+            num_opciones = min(5, len(opciones))
+            
+            for j in range(num_opciones):
+                # Si es la respuesta correcta, dibujar círculo negro
+                if j == resp_idx:
+                    draw.ellipse((x_pos-25, y_pos-25, x_pos+25, y_pos+25), outline="black", fill="black", width=3)
+                    letra_color = "white"
+                else:
+                    draw.ellipse((x_pos-25, y_pos-25, x_pos+25, y_pos+25), outline="black", width=1)
+                    letra_color = "black"
+                
+                # Letra de opción (a, b, c, etc.)
+                draw.text((x_pos, y_pos), chr(97+j), fill=letra_color, font=option_font, anchor="mm")
+                
+                x_pos += margin_option
+            
+            # Actualizar posición vertical para el siguiente escenario
+            y_pos += 100
+        
+        # === TERCERA SERIE - MEJORADA ===
+        # Título de tercera serie
         y_pos += 100
-        # Medidas de tendencia central
-        draw.text((200, y_pos), "4. Medidas de tendencia central:", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"Media: {respuestas['tercera_serie']['medidas_centrales']['media']}", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"Mediana: {respuestas['tercera_serie']['medidas_centrales']['mediana']}", fill="black", font=text_font)
-        y_pos += 70
-        draw.text((250, y_pos), f"Moda: {respuestas['tercera_serie']['medidas_centrales']['moda']}", fill="black", font=text_font)
+        draw.text((width//2, y_pos), "TERCERA SERIE (40 PUNTOS)", fill="black", font=text_font, anchor="mm")
+        y_pos += 100
+        
+        # 1. Coeficiente de Gini
+        draw.text((margin_left, y_pos), "1. Coeficiente de Gini:", fill="black", font=text_font)
+        draw.text((margin_left + 550, y_pos), f"{respuestas['tercera_serie']['gini']}", fill="black", font=text_font, anchor="lm")
+        y_pos += 80
+        
+        # 2. Distribución de frecuencias
+        draw.text((margin_left, y_pos), "2. Distribución de frecuencias:", fill="black", font=text_font)
+        y_pos += 60
+        # K
+        draw.text((margin_left + 50, y_pos), f"K: {respuestas['tercera_serie']['dist_frecuencias']['k']}", fill="black", font=text_font)
+        # Rango
+        draw.text((width//2 + 50, y_pos), f"Rango: {respuestas['tercera_serie']['dist_frecuencias']['rango']}", fill="black", font=text_font)
+        y_pos += 60
+        # Amplitud
+        draw.text((margin_left + 50, y_pos), f"Amplitud: {respuestas['tercera_serie']['dist_frecuencias']['amplitud']}", fill="black", font=text_font)
+        y_pos += 80
+        
+        # 3. Tallo y Hoja
+        draw.text((margin_left, y_pos), "3. Tallo y Hoja:", fill="black", font=text_font)
+        y_pos += 60
+        # Moda
+        draw.text((margin_left + 50, y_pos), f"Moda: {respuestas['tercera_serie']['tallo_hoja']['moda']}", fill="black", font=text_font)
+        # Intervalo
+        draw.text((width//2 + 50, y_pos), f"Intervalo: {respuestas['tercera_serie']['tallo_hoja']['intervalo']}", fill="black", font=text_font)
+        y_pos += 80
+        
+        # 4. Medidas de tendencia central
+        draw.text((margin_left, y_pos), "4. Medidas de tendencia central:", fill="black", font=text_font)
+        y_pos += 60
+        # Media
+        draw.text((margin_left + 50, y_pos), f"Media: {respuestas['tercera_serie']['medidas_centrales']['media']}", fill="black", font=text_font)
+        # Mediana
+        draw.text((width//2 + 50, y_pos), f"Mediana: {respuestas['tercera_serie']['medidas_centrales']['mediana']}", fill="black", font=text_font)
+        y_pos += 60
+        # Moda
+        draw.text((margin_left + 50, y_pos), f"Moda: {respuestas['tercera_serie']['medidas_centrales']['moda']}", fill="black", font=text_font)
         
         # Añadir información de pie de página
         footer_y = height - 100
@@ -2137,6 +2392,8 @@ def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parc
             image.save(simple_path)
             print(f"Plantilla guardada en: {simple_path}")
             
+            print(f"===== FINALIZADA CREACIÓN DE PLANTILLA DE CALIFICACIÓN =====\n")
+            
             return simple_filename  # Devolver el nombre simple que usará la interfaz
         except Exception as e:
             print(f"Error al guardar plantilla: {str(e)}")
@@ -2144,8 +2401,9 @@ def crear_plantilla_calificacion(variante_id, seccion="A", tipo_evaluacion="parc
             
     except Exception as e:
         print(f"Error al crear plantilla de calificación: {str(e)}")
+        traceback.print_exc()
         return None
-
+        
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
@@ -2304,6 +2562,962 @@ def calcular_puntuacion(respuestas_alumno, respuestas_correctas):
     puntuacion["convertida_25"] = round(puntuacion["total"] * 0.25, 2)
     
     return puntuacion
+
+def crear_solucion_matematica_detallada(variante_id, seccion="A", tipo_evaluacion="parcial1"):
+    """
+    Crea un documento Word con soluciones matemáticas detalladas, incluyendo:
+    - Pasos completos para cada problema
+    - Tablas detalladas
+    - Explicaciones de Series 1 y 2
+    """
+    try:
+        print(f"\n===== INICIANDO CREACIÓN DE SOLUCIÓN MATEMÁTICA DETALLADA =====")
+        print(f"Variante: {variante_id}, Sección: {seccion}, Tipo: {tipo_evaluacion}")
+        
+        from docx import Document
+        from docx.shared import Pt, Inches, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.enum.style import WD_STYLE_TYPE
+        import math
+        
+        # Crear carpeta con timestamp para los archivos
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = os.path.join(PLANTILLAS_FOLDER, f'{seccion}_{tipo_evaluacion}_{timestamp}')
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Cargar respuestas de la variante
+        with open(os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json'), 'r', encoding='utf-8') as f:
+            respuestas = json.load(f)
+        
+        # Cargar la variante para acceder a los datos de los problemas
+        with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
+            variante = json.load(f)
+        
+        # Crear documento Word
+        doc = Document()
+        
+        # Configurar estilos y formato
+        styles = doc.styles
+        
+        # Añadir estilo de título para cabeceras
+        if 'Heading1Custom' not in [s.name for s in styles]:
+            h1_style = styles.add_style('Heading1Custom', WD_STYLE_TYPE.PARAGRAPH)
+            h1_style.font.bold = True
+            h1_style.font.size = Pt(18)
+            h1_style.font.color.rgb = RGBColor(0, 0, 128)  # Azul oscuro
+        
+        # Añadir estilo para subtítulos
+        if 'Heading2Custom' not in [s.name for s in styles]:
+            h2_style = styles.add_style('Heading2Custom', WD_STYLE_TYPE.PARAGRAPH)
+            h2_style.font.bold = True
+            h2_style.font.size = Pt(16)
+            h2_style.font.color.rgb = RGBColor(0, 102, 204)  # Azul medio
+        
+        # Añadir estilo para pasos numerados
+        if 'StepCustom' not in [s.name for s in styles]:
+            step_style = styles.add_style('StepCustom', WD_STYLE_TYPE.PARAGRAPH)
+            step_style.font.bold = True
+            step_style.font.size = Pt(12)
+            step_style.font.color.rgb = RGBColor(0, 128, 0)  # Verde
+        
+        # Configurar márgenes
+        sections = doc.sections
+        for section in sections:
+            section.top_margin = Inches(0.7)
+            section.bottom_margin = Inches(0.7)
+            section.left_margin = Inches(0.8)
+            section.right_margin = Inches(0.8)
+        
+        # Tipo de evaluación a texto legible
+        tipo_textos = {
+            'parcial1': 'PRIMER PARCIAL',
+            'parcial2': 'SEGUNDO PARCIAL',
+            'final': 'EXAMEN FINAL',
+            'corto': 'EVALUACIÓN CORTA',
+            'recuperacion': 'RECUPERACIÓN',
+            'test': 'PRUEBA'
+        }
+        
+        tipo_texto = tipo_textos.get(tipo_evaluacion, 'EVALUACIÓN PARCIAL')
+        
+        # Título principal
+        heading = doc.add_heading('SOLUCIÓN MATEMÁTICA DETALLADA', 0)
+        heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        subheading = doc.add_heading(f'{tipo_texto} - SECCIÓN {seccion} - VARIANTE {variante_id}', 1)
+        subheading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Fecha
+        fecha_actual = datetime.now().strftime("%d/%m/%Y")
+        p = doc.add_paragraph(f"Fecha de generación: {fecha_actual}")
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        
+        # Aviso
+        p = doc.add_paragraph("DOCUMENTO CONFIDENCIAL - SOLO PARA USO DEL DOCENTE")
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.runs[0]
+        run.bold = True
+        run.font.color.rgb = RGBColor(192, 0, 0)  # Rojo
+        
+        # PRIMERA SERIE - Explicación detallada
+        doc.add_paragraph().add_run("PRIMERA SERIE - RESPUESTAS CORRECTAS Y JUSTIFICACIÓN").bold = True
+        doc.add_paragraph().add_run("Valor: 40 puntos - 4 puntos por pregunta").italic = True
+        
+        # Tabla con respuestas y justificaciones
+        primera_table = doc.add_table(rows=len(variante["primera_serie"])+1, cols=3)
+        primera_table.style = 'Table Grid'
+        
+        # Encabezados de tabla
+        headers = ["Pregunta", "Respuesta Correcta", "Justificación"]
+        for i, header in enumerate(headers):
+            cell = primera_table.cell(0, i)
+            cell.text = header
+            cell.paragraphs[0].runs[0].bold = True
+        
+        # Llenar la tabla con respuestas y justificaciones personalizadas
+        for i, (pregunta, resp_idx) in enumerate(zip(variante["primera_serie"], respuestas["primera_serie"]), 1):
+            # Texto de la pregunta
+            primera_table.cell(i, 0).text = f"{i}. {pregunta['pregunta']}"
+            
+            # Respuesta correcta
+            if resp_idx < len(pregunta["opciones"]):
+                primera_table.cell(i, 1).text = pregunta["opciones"][resp_idx]
+            else:
+                primera_table.cell(i, 1).text = f"Opción {resp_idx+1}"
+            
+            # Generar justificación específica según el tipo de pregunta
+            justificacion = ""
+            if "estadística" in pregunta["pregunta"].lower():
+                justificacion = "Es la definición correcta según los principios básicos de estadística descriptiva."
+            elif "variable" in pregunta["pregunta"].lower():
+                justificacion = "La clasificación de variables es fundamental en estadística para determinar los métodos de análisis apropiados."
+            elif "gini" in pregunta["pregunta"].lower():
+                justificacion = "El coeficiente de Gini es la medida estándar para cuantificar la desigualdad en una distribución."
+            elif "muestra" in pregunta["pregunta"].lower() or "población" in pregunta["pregunta"].lower():
+                justificacion = "Es importante distinguir entre población y muestra para determinar los métodos de inferencia estadística apropiados."
+            elif "método" in pregunta["pregunta"].lower() or "sturgers" in pregunta["pregunta"].lower():
+                justificacion = "El método de Sturgers proporciona una guía para determinar el número óptimo de intervalos en una distribución de frecuencias."
+            elif "media" in pregunta["pregunta"].lower() or "mediana" in pregunta["pregunta"].lower() or "moda" in pregunta["pregunta"].lower():
+                justificacion = "Las medidas de tendencia central tienen diferentes propiedades y sensibilidades a valores extremos."
+            elif "gráfico" in pregunta["pregunta"].lower() or "histograma" in pregunta["pregunta"].lower():
+                justificacion = "Cada tipo de gráfico es apropiado para diferentes tipos de datos y objetivos de visualización."
+            elif "dispersión" in pregunta["pregunta"].lower() or "varianza" in pregunta["pregunta"].lower():
+                justificacion = "Las medidas de dispersión cuantifican la variabilidad o heterogeneidad de los datos respecto a la media."
+            else:
+                justificacion = "La respuesta es correcta según los conceptos estadísticos estudiados en el curso."
+            
+            primera_table.cell(i, 2).text = justificacion
+        
+        doc.add_paragraph()
+        
+        # SEGUNDA SERIE - Explicación detallada de tipos de gráficos
+        doc.add_paragraph().add_run("SEGUNDA SERIE - TIPOS DE GRÁFICOS ESTADÍSTICOS Y JUSTIFICACIONES").bold = True
+        doc.add_paragraph().add_run("Valor: 20 puntos - 3.33 puntos por pregunta").italic = True
+        
+        # Explicaciones generales de cada tipo de gráfico
+        grafico_explicaciones = {
+            "Gráfica de barras": "Las gráficas de barras son ideales para comparar categorías discretas y no relacionadas entre sí. Cada barra representa una categoría distinta, y la altura de la barra corresponde a su valor o frecuencia. Es óptima para visualizar datos nominales u ordinales.",
+            
+            "Gráfica circular (pastel)": "Las gráficas circulares son perfectas para mostrar proporciones relativas o porcentajes de un todo. Cada segmento representa una parte del total, y el círculo completo representa el 100%. Son más efectivas cuando se tienen pocas categorías (generalmente menos de 7) y se quiere enfatizar la contribución de cada parte al conjunto.",
+            
+            "Histograma de Pearson": "Los histogramas son apropiados para variables continuas, mostrando la distribución de frecuencias por intervalos. Las barras son contiguas, indicando continuidad entre intervalos. Permiten visualizar la forma de la distribución, identificar la centralidad, dispersión y detectar asimetrías o valores atípicos.",
+            
+            "Ojiva de Galton": "La ojiva o curva de frecuencias acumuladas muestra el número o porcentaje de observaciones que están por debajo de un valor determinado. Es útil para determinar cuántos casos están por encima o por debajo de un umbral específico, percentiles o cuartiles de la distribución.",
+            
+            "Polígono de frecuencias": "El polígono de frecuencias conecta con líneas los puntos que representan las frecuencias de cada intervalo, ubicados en el punto medio de cada intervalo. Es adecuado para visualizar tendencias, comportamientos temporales o comparar múltiples distribuciones en el mismo gráfico."
+        }
+        
+        # Tabla con respuestas y justificaciones específicas
+        segunda_table = doc.add_table(rows=len(variante["segunda_serie"])+1, cols=3)
+        segunda_table.style = 'Table Grid'
+        
+        # Encabezados de tabla
+        headers = ["Escenario", "Gráfico apropiado", "Justificación"]
+        for i, header in enumerate(headers):
+            cell = segunda_table.cell(0, i)
+            cell.text = header
+            cell.paragraphs[0].runs[0].bold = True
+        
+        # Llenar la tabla con respuestas y justificaciones
+        for i, (escenario, resp_idx) in enumerate(zip(variante["segunda_serie"], respuestas["segunda_serie"]), 1):
+            # Texto del escenario
+            segunda_table.cell(i, 0).text = f"{i}. {escenario['escenario']}"
+            
+            # Gráfico recomendado
+            grafico_seleccionado = escenario["opciones"][resp_idx]
+            segunda_table.cell(i, 1).text = grafico_seleccionado
+            
+            # Justificación específica para este escenario
+            justificacion_base = grafico_explicaciones.get(grafico_seleccionado, "")
+            
+            # Añadir contexto específico al escenario
+            contexto_especifico = ""
+            if "distribución porcentual" in escenario["escenario"] and "pastel" in grafico_seleccionado:
+                contexto_especifico = "En este caso, los ingresos por tipo de servicio representan partes de un todo (100% de ingresos), por lo que la gráfica circular muestra claramente la proporción que cada servicio aporta al total."
+            
+            elif "intervalos" in escenario["escenario"] and "Histograma" in grafico_seleccionado:
+                contexto_especifico = "Las calificaciones son datos continuos que pueden agruparse en intervalos. El histograma permite visualizar la forma de la distribución y evaluar si se aproxima a una distribución normal."
+            
+            elif "evolución" in escenario["escenario"] and "Polígono" in grafico_seleccionado:
+                contexto_especifico = "Para datos que muestran una evolución temporal, el polígono de frecuencias permite visualizar tendencias, identificar picos, caídas y patrones a lo largo del tiempo."
+            
+            elif "acumulados" in escenario["escenario"] and "Ojiva" in grafico_seleccionado:
+                contexto_especifico = "La ojiva permite identificar fácilmente qué porcentaje de créditos está por debajo de un monto específico, facilitando el análisis de percentiles y cuartiles."
+            
+            elif "comparación" in escenario["escenario"] and "barras" in grafico_seleccionado:
+                contexto_especifico = "Las facultades representan categorías discretas y no relacionadas entre sí, por lo que la gráfica de barras facilita la comparación visual directa del número de estudiantes entre facultades."
+            
+            # Combinar justificación
+            segunda_table.cell(i, 2).text = f"{justificacion_base}\n\nAplicación específica: {contexto_especifico}"
+        
+        doc.add_paragraph()
+        
+        # TERCERA SERIE - Soluciones detalladas para cada problema
+        doc.add_paragraph().add_run("TERCERA SERIE - SOLUCIONES MATEMÁTICAS DETALLADAS").bold = True
+        doc.add_paragraph().add_run("Valor: 40 puntos - 10 puntos por problema").italic = True
+        
+        # Ejercicio 1: Coeficiente de Gini
+        try:
+            doc.add_heading('Ejercicio 1: Coeficiente de Gini', level=2).style = 'Heading2Custom'
+            
+            p = doc.add_paragraph("Datos del problema:")
+            p.add_run("\n" + variante["tercera_serie"][0].get("title", ""))
+            
+            # Tabla original del problema
+            gini_data = variante["tercera_serie"][0]
+            table_gini = doc.add_table(rows=len(gini_data["ranges"])+1, cols=2)
+            table_gini.style = 'Table Grid'
+            
+            # Encabezados
+            table_gini.cell(0, 0).text = "Salario mensual en (Q)"
+            table_gini.cell(0, 1).text = "No. De trabajadores"
+            
+            # Datos
+            for i, (rango, trabajadores) in enumerate(zip(gini_data["ranges"], gini_data["workers"]), 1):
+                table_gini.cell(i, 0).text = rango
+                table_gini.cell(i, 1).text = str(trabajadores)
+            
+            # Paso 1: Completar tabla para cálculo
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 1: Completar la tabla para el cálculo del coeficiente de Gini").bold = True
+            
+            p = doc.add_paragraph()
+            p.add_run("Para calcular el coeficiente de Gini necesitamos:").bold = True
+            p.add_run("\n• Proporción de población (porcentaje de trabajadores)")
+            p.add_run("\n• Proporción acumulada de población")
+            p.add_run("\n• Proporción de ingresos (usando punto medio del intervalo salarial)")
+            p.add_run("\n• Proporción acumulada de ingresos")
+            
+            # Tabla completa para el cálculo
+            cols = ["Límites salariales", "Trabajadores", "Punto medio", "Ingresos (PM×Trab)", "% Trab", "% Trab Acum", "% Ingresos", "% Ingresos Acum"]
+            table_calc = doc.add_table(rows=len(gini_data["ranges"])+2, cols=len(cols))
+            table_calc.style = 'Table Grid'
+            
+            # Encabezados
+            for i, col in enumerate(cols):
+                cell = table_calc.cell(0, i)
+                cell.text = col
+                cell.paragraphs[0].runs[0].bold = True
+            
+            # Preparar cálculos
+            total_trabajadores = sum(gini_data["workers"])
+            
+            # Calcular puntos medios
+            puntos_medios = []
+            for rango in gini_data["ranges"]:
+                # Extraer límites del rango (por ejemplo, "[1500-2000)" → 1500 y 2000)
+                limites = rango.replace('[', '').replace(')', '').split('-')
+                limite_inf = float(limites[0])
+                limite_sup = float(limites[1])
+                punto_medio = (limite_inf + limite_sup) / 2
+                puntos_medios.append(punto_medio)
+            
+            # Calcular ingresos por categoría
+            ingresos_categoria = [pm * t for pm, t in zip(puntos_medios, gini_data["workers"])]
+            total_ingresos = sum(ingresos_categoria)
+            
+            # Proporciones y acumulados
+            prop_pob_acum = 0
+            prop_ing_acum = 0
+            prop_pobs = []
+            prop_pobs_acum = []
+            prop_ings = []
+            prop_ings_acum = []
+            
+            for trabajadores, ingreso_cat in zip(gini_data["workers"], ingresos_categoria):
+                # Proporciones de población
+                prop_pob = trabajadores / total_trabajadores
+                prop_pob_acum += prop_pob
+                prop_pobs.append(prop_pob)
+                prop_pobs_acum.append(prop_pob_acum)
+                
+                # Proporciones de ingreso
+                prop_ing = ingreso_cat / total_ingresos
+                prop_ing_acum += prop_ing
+                prop_ings.append(prop_ing)
+                prop_ings_acum.append(prop_ing_acum)
+            
+            # Llenar tabla de cálculo
+            for i, (rango, trab, pm, ing_cat, pp, ppa, pi, pia) in enumerate(
+                zip(gini_data["ranges"], gini_data["workers"], puntos_medios, ingresos_categoria, 
+                    prop_pobs, prop_pobs_acum, prop_ings, prop_ings_acum), 1):
+                
+                table_calc.cell(i, 0).text = rango
+                table_calc.cell(i, 1).text = str(trab)
+                table_calc.cell(i, 2).text = f"{pm:.2f}"
+                table_calc.cell(i, 3).text = f"{ing_cat:.2f}"
+                table_calc.cell(i, 4).text = f"{pp:.4f}"
+                table_calc.cell(i, 5).text = f"{ppa:.4f}"
+                table_calc.cell(i, 6).text = f"{pi:.4f}"
+                table_calc.cell(i, 7).text = f"{pia:.4f}"
+            
+            # Fila de totales
+            row_total = table_calc.rows[-1]
+            row_total.cells[0].text = "TOTAL"
+            row_total.cells[1].text = str(total_trabajadores)
+            row_total.cells[3].text = f"{total_ingresos:.2f}"
+            row_total.cells[4].text = "1.0000"
+            row_total.cells[6].text = "1.0000"
+            
+            # Paso 2: Cálculo del área bajo la curva de Lorenz
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 2: Cálculo del coeficiente de Gini").bold = True
+            
+            p = doc.add_paragraph()
+            p.add_run("El coeficiente de Gini se calcula usando la fórmula:").bold = True
+            
+            p = doc.add_paragraph()
+            p.add_run("G = 1 - Σ(Xi+1 - Xi)(Yi+1 + Yi)").bold = True
+            p.add_run("\nDonde:")
+            p.add_run("\n• Xi = proporción acumulada de población")
+            p.add_run("\n• Yi = proporción acumulada de ingreso")
+            
+            # Cálculo del área bajo la curva de Lorenz
+            area = 0
+            for i in range(len(prop_pobs_acum)-1):
+                # Área del trapecio
+                area += (prop_pobs_acum[i+1] - prop_pobs_acum[i]) * (prop_ings_acum[i+1] + prop_ings_acum[i])
+            
+            # El área se divide por 2 para obtener el valor real
+            area = area / 2
+            
+            # El coeficiente de Gini es 1 - 2*área (o simplificado: 1 - área)
+            gini_value = respuestas["tercera_serie"]["gini"]
+            
+            p = doc.add_paragraph()
+            p.add_run("Cálculo del coeficiente:").bold = True
+            p.add_run(f"\nÁrea bajo la curva de Lorenz = {area:.6f}")
+            p.add_run(f"\nCoeficiente de Gini = 1 - 2*({area:.6f}) = {1-2*area:.6f}")
+            p.add_run(f"\nValor aproximado del coeficiente = {gini_value}")
+            
+            # Paso 3: Interpretación
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 3: Interpretación del resultado").bold = True
+            
+            p = doc.add_paragraph()
+            p.add_run("Interpretación del coeficiente de Gini:").bold = True
+            
+            # Interpretación basada en el valor
+            if gini_value < 0.3:
+                interpretacion = f"El coeficiente de Gini calculado es {gini_value}, lo que indica una distribución relativamente equitativa de los salarios. Este valor sugiere que no existe una gran desigualdad salarial entre los trabajadores de la empresa."
+            elif gini_value < 0.45:
+                interpretacion = f"El coeficiente de Gini calculado es {gini_value}, lo que indica una desigualdad moderada en la distribución de salarios. Este valor es típico en muchas empresas y sugiere que existe cierta disparidad, pero no es extrema."
+            else:
+                interpretacion = f"El coeficiente de Gini calculado es {gini_value}, lo que indica una desigualdad significativa en la distribución de salarios. Este valor sugiere que hay una concentración importante de los salarios en ciertos grupos de trabajadores."
+            
+            p.add_run(f"\n\n{interpretacion}")
+            p.add_run("\n\nRecordemos que el coeficiente de Gini:")
+            p.add_run("\n• Varía entre 0 (igualdad perfecta) y 1 (desigualdad absoluta)")
+            p.add_run("\n• Valores menores a 0.3 indican baja desigualdad")
+            p.add_run("\n• Valores entre 0.3 y 0.5 indican desigualdad moderada")
+            p.add_run("\n• Valores mayores a 0.5 indican alta desigualdad")
+            
+        except Exception as e:
+            print(f"Error al procesar el ejercicio 1: {str(e)}")
+            doc.add_paragraph(f"Error al generar la solución del ejercicio 1: {str(e)}").italic = True
+        
+        doc.add_paragraph()
+        
+        # Ejercicio 2: Distribución de frecuencias (Método Sturgers)
+        try:
+            doc.add_heading('Ejercicio 2: Distribución de Frecuencias - Método Sturgers', level=2).style = 'Heading2Custom'
+            
+            sturgers_data = variante["tercera_serie"][1]
+            
+            p = doc.add_paragraph("Datos del problema:")
+            p.add_run("\n" + sturgers_data.get("title", ""))
+            
+            # Mostrar datos originales en tabla
+            valores = sturgers_data["data"]
+            
+            # Organizar los datos en una tabla 5x5
+            tabla_datos = doc.add_table(rows=5, cols=5)
+            tabla_datos.style = 'Table Grid'
+            
+            idx = 0
+            for i in range(5):
+                for j in range(5):
+                    if idx < len(valores):
+                        tabla_datos.cell(i, j).text = valores[idx]
+                        idx += 1
+            
+            # Paso 1: Convertir valores a numéricos y ordenarlos
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 1: Preparación de los datos").bold = True
+            
+            # Convertir a valores numéricos
+            valores_num = [int(x) for x in valores]
+            valores_ordenados = sorted(valores_num)
+            
+            p = doc.add_paragraph("Convertimos todos los valores a números y los ordenamos de menor a mayor:")
+            p_ordenados = doc.add_paragraph()
+            for i, val in enumerate(valores_ordenados):
+                if i > 0:
+                    p_ordenados.add_run(", ")
+                p_ordenados.add_run(str(val))
+            
+            # Paso 2: Encontrar min, max y rango
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 2: Cálculo de valores mínimo, máximo y rango").bold = True
+            
+            valor_min = min(valores_num)
+            valor_max = max(valores_num)
+            rango = respuestas["tercera_serie"]["dist_frecuencias"]["rango"]
+            
+            p = doc.add_paragraph()
+            p.add_run(f"Valor mínimo: {valor_min}")
+            p.add_run(f"\nValor máximo: {valor_max}")
+            p.add_run(f"\nRango = Valor máximo - Valor mínimo = {valor_max} - {valor_min} = {rango}")
+            
+            # Paso 3: Calcular el número de clases (K) usando la regla de Sturgers
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 3: Cálculo del número de clases (K) usando la regla de Sturgers").bold = True
+            
+            n = len(valores_num)
+            k_exacto = 1 + 3.322 * math.log10(n)
+            k_value = respuestas["tercera_serie"]["dist_frecuencias"]["k"]
+            k_redondeado = round(k_value)
+            
+            p = doc.add_paragraph()
+            p.add_run("La fórmula de Sturgers para calcular el número de clases es:")
+            p.add_run("\nK = 1 + 3.322 × log₁₀(n)")
+            p.add_run(f"\nDonde n = {n} (número de observaciones)")
+            p.add_run(f"\nK = 1 + 3.322 × log₁₀({n})")
+            p.add_run(f"\nK = 1 + 3.322 × {math.log10(n):.4f}")
+            p.add_run(f"\nK = 1 + {3.322 * math.log10(n):.4f}")
+            p.add_run(f"\nK = {k_exacto:.4f}")
+            p.add_run(f"\nRedondeando, utilizaremos K = {k_redondeado} clases")
+            
+            # Paso 4: Calcular la amplitud de clase
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 4: Cálculo de la amplitud de clase").bold = True
+            
+            amplitud_exacta = rango / k_exacto
+            amplitud = respuestas["tercera_serie"]["dist_frecuencias"]["amplitud"]
+            amplitud_redondeada = math.ceil(amplitud)  # Redondear hacia arriba
+            
+            p = doc.add_paragraph()
+            p.add_run("La amplitud de clase se calcula como:")
+            p.add_run("\nAmplitud = Rango ÷ K")
+            p.add_run(f"\nAmplitud = {rango} ÷ {k_exacto:.4f}")
+            p.add_run(f"\nAmplitud = {amplitud_exacta:.4f}")
+            p.add_run(f"\nPara trabajar con límites enteros, redondeamos hacia arriba: Amplitud = {amplitud_redondeada}")
+            
+            # Paso 5: Construir la tabla de distribución de frecuencias
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 5: Construcción de la tabla de distribución de frecuencias").bold = True
+            
+            # Crear límites de clase
+            limite_inferior = valor_min
+            limites = []
+            
+            for i in range(k_redondeado):
+                limite_superior = limite_inferior + amplitud_redondeada
+                limites.append((limite_inferior, limite_superior))
+                limite_inferior = limite_superior
+            
+            # Calcular frecuencias
+            frecuencias = [0] * k_redondeado
+            for valor in valores_num:
+                for i, (li, ls) in enumerate(limites):
+                    if li <= valor < ls or (i == k_redondeado - 1 and valor == ls):
+                        frecuencias[i] += 1
+                        break
+            
+            # Calcular frecuencias relativas y acumuladas
+            frec_rel = [f/n for f in frecuencias]
+            frec_acum = []
+            acum = 0
+            for f in frecuencias:
+                acum += f
+                frec_acum.append(acum)
+                
+            frec_rel_acum = []
+            acum_rel = 0
+            for f in frec_rel:
+                acum_rel += f
+                frec_rel_acum.append(acum_rel)
+            
+            # Calcular marcas de clase
+            marcas_clase = [(li + ls)/2 for li, ls in limites]
+            
+            # Tabla completa
+            tabla_distrib = doc.add_table(rows=k_redondeado+1, cols=7)
+            tabla_distrib.style = 'Table Grid'
+            
+            # Encabezados
+            encabezados = ["Límites de clase", "Marca de clase", "Frecuencia absoluta", "Frecuencia relativa", 
+                         "Frecuencia acumulada", "Frecuencia relativa acumulada", "Densidad de frecuencia"]
+            
+            for i, encabezado in enumerate(encabezados):
+                cell = tabla_distrib.cell(0, i)
+                cell.text = encabezado
+                cell.paragraphs[0].runs[0].bold = True
+            
+            # Llenar la tabla
+            for i, ((li, ls), mc, fa, fr, fac, frac) in enumerate(
+                zip(limites, marcas_clase, frecuencias, frec_rel, frec_acum, frec_rel_acum), 1):
+                
+                tabla_distrib.cell(i, 0).text = f"[{li} - {ls})"
+                tabla_distrib.cell(i, 1).text = f"{mc:.1f}"
+                tabla_distrib.cell(i, 2).text = str(fa)
+                tabla_distrib.cell(i, 3).text = f"{fr:.4f}"
+                tabla_distrib.cell(i, 4).text = str(fac)
+                tabla_distrib.cell(i, 5).text = f"{frac:.4f}"
+                tabla_distrib.cell(i, 6).text = f"{fa/amplitud_redondeada:.4f}"
+            
+            # Paso 6: Interpretación de resultados
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 6: Interpretación de los resultados").bold = True
+            
+            # Encontrar la clase modal (mayor frecuencia)
+            clase_modal_idx = frecuencias.index(max(frecuencias))
+            clase_modal = f"[{limites[clase_modal_idx][0]} - {limites[clase_modal_idx][1]})"
+            
+            p = doc.add_paragraph()
+            p.add_run("A partir de la tabla de distribución de frecuencias, podemos observar:")
+            p.add_run(f"\n\n• La clase con mayor frecuencia es {clase_modal} con {max(frecuencias)} observaciones.")
+            p.add_run(f"\n• El {frec_rel_acum[k_redondeado//2]*100:.1f}% de los datos están por debajo de {limites[k_redondeado//2][1]}.")
+            
+            if frecuencias[0] > frecuencias[-1]:
+                p.add_run("\n• La distribución parece tener un sesgo hacia la derecha (mayor concentración en valores bajos).")
+            elif frecuencias[0] < frecuencias[-1]:
+                p.add_run("\n• La distribución parece tener un sesgo hacia la izquierda (mayor concentración en valores altos).")
+            else:
+                p.add_run("\n• La distribución parece ser aproximadamente simétrica.")
+                
+        except Exception as e:
+            print(f"Error al procesar el ejercicio 2: {str(e)}")
+            doc.add_paragraph(f"Error al generar la solución del ejercicio 2: {str(e)}").italic = True
+        
+        doc.add_paragraph()
+        
+        # Ejercicio 3: Diagrama de Tallo y Hoja
+        try:
+            doc.add_heading('Ejercicio 3: Diagrama de Tallo y Hoja', level=2).style = 'Heading2Custom'
+            
+            stem_leaf_data = variante["tercera_serie"][2]
+            
+            p = doc.add_paragraph("Datos del problema:")
+            p.add_run("\n" + stem_leaf_data.get("title", ""))
+            
+            # Mostrar datos originales en tabla 3x8
+            valores_sl = stem_leaf_data["data"]
+            
+            tabla_datos_sl = doc.add_table(rows=3, cols=8)
+            tabla_datos_sl.style = 'Table Grid'
+            
+            idx = 0
+            for i in range(3):
+                for j in range(8):
+                    if idx < len(valores_sl):
+                        tabla_datos_sl.cell(i, j).text = valores_sl[idx]
+                        idx += 1
+            
+            # Paso 1: Preparación de datos
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 1: Preparación y ordenamiento de los datos").bold = True
+            
+            # Convertir a valores numéricos y ordenar
+            valores_sl_num = [float(x) for x in valores_sl]
+            valores_sl_ordenados = sorted(valores_sl_num)
+            
+            p = doc.add_paragraph("Convertimos todos los valores a números decimales y los ordenamos de menor a mayor:")
+            p_sl_ordenados = doc.add_paragraph()
+            for i, val in enumerate(valores_sl_ordenados):
+                if i > 0:
+                    p_sl_ordenados.add_run(", ")
+                p_sl_ordenados.add_run(f"{val:.1f}")
+            
+            # Paso 2: Identificar tallos y hojas
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 2: Construcción del diagrama de tallo y hoja").bold = True
+            
+            p = doc.add_paragraph()
+            p.add_run("En un diagrama de tallo y hoja para datos decimales con un solo decimal:")
+            p.add_run("\n• El tallo representa la parte entera del número")
+            p.add_run("\n• La hoja representa el primer decimal")
+            p.add_run("\nPor ejemplo, para el valor 4.5:")
+            p.add_run("\n• Tallo: 4")
+            p.add_run("\n• Hoja: 5")
+            
+            # Organizar datos por tallo y hoja
+            stem_leaf_dict = {}
+            
+            for valor in valores_sl_num:
+                tallo = int(valor)
+                hoja = int((valor - tallo) * 10)  # Obtener el primer decimal
+                
+                if tallo not in stem_leaf_dict:
+                    stem_leaf_dict[tallo] = []
+                
+                stem_leaf_dict[tallo].append(hoja)
+            
+            # Ordenar hojas para cada tallo
+            for tallo in stem_leaf_dict:
+                stem_leaf_dict[tallo].sort()
+            
+            # Crear diagrama visual
+            p = doc.add_paragraph()
+            p.add_run("Diagrama de tallo y hoja:").bold = True
+            
+            tabla_stem_leaf = doc.add_table(rows=len(stem_leaf_dict)+1, cols=2)
+            tabla_stem_leaf.style = 'Table Grid'
+            
+            # Encabezados
+            tabla_stem_leaf.cell(0, 0).text = "Tallo"
+            tabla_stem_leaf.cell(0, 1).text = "Hojas"
+            
+            # Llenar tabla
+            for i, (tallo, hojas) in enumerate(sorted(stem_leaf_dict.items()), 1):
+                tabla_stem_leaf.cell(i, 0).text = str(tallo)
+                
+                # Formato de hojas
+                hojas_str = " ".join(str(h) for h in hojas)
+                tabla_stem_leaf.cell(i, 1).text = hojas_str
+            
+            # Paso 3: Análisis del diagrama
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 3: Análisis e interpretación del diagrama").bold = True
+            
+            # Encontrar el tallo con más hojas (moda del tallo)
+            tallo_moda = max(stem_leaf_dict.items(), key=lambda x: len(x[1]))[0]
+            
+            # Encontrar el valor más frecuente
+            todos_valores = {}
+            for valor in valores_sl_num:
+                if valor not in todos_valores:
+                    todos_valores[valor] = 0
+                todos_valores[valor] += 1
+            
+            moda = max(todos_valores.items(), key=lambda x: x[1])[0]
+            
+            # Obtener valores del historial de respuestas
+            moda_valor = respuestas["tercera_serie"]["tallo_hoja"]["moda"]
+            intervalo_conc = respuestas["tercera_serie"]["tallo_hoja"]["intervalo"]
+            
+            p = doc.add_paragraph()
+            p.add_run("Del diagrama de tallo y hoja podemos observar:").bold = True
+            p.add_run(f"\n\n1. La mayor concentración de datos se encuentra en el tallo {tallo_moda} (intervalo {intervalo_conc}).")
+            p.add_run(f"\n\n2. El valor que más se repite (moda) es aproximadamente {moda_valor}.")
+            
+            # Determinar la forma de la distribución
+            min_tallo = min(stem_leaf_dict.keys())
+            max_tallo = max(stem_leaf_dict.keys())
+            medio_tallo = (min_tallo + max_tallo) / 2
+            
+            if tallo_moda < medio_tallo:
+                p.add_run("\n\n3. La distribución muestra un sesgo hacia la derecha (mayor concentración en valores bajos).")
+            elif tallo_moda > medio_tallo:
+                p.add_run("\n\n3. La distribución muestra un sesgo hacia la izquierda (mayor concentración en valores altos).")
+            else:
+                p.add_run("\n\n3. La distribución parece ser aproximadamente simétrica.")
+            
+            # Añadir contexto según el tipo de datos
+            if "ventas" in stem_leaf_data["title"].lower() or "crecimiento" in stem_leaf_data["title"].lower():
+                p.add_run(f"\n\n4. Como estos datos representan crecimiento porcentual de ventas, podemos concluir que la mayoría de los productos muestran un crecimiento alrededor del {tallo_moda}%.")
+            elif "tiempo" in stem_leaf_data["title"].lower() or "atención" in stem_leaf_data["title"].lower():
+                p.add_run(f"\n\n4. Como estos datos representan tiempos de atención, podemos concluir que la mayoría de los clientes son atendidos en aproximadamente {tallo_moda} minutos.")
+            elif "consumo" in stem_leaf_data["title"].lower() or "combustible" in stem_leaf_data["title"].lower():
+                p.add_run(f"\n\n4. Como estos datos representan consumo de combustible, podemos concluir que la mayoría de los vehículos tienen un rendimiento de aproximadamente {tallo_moda} km/litro.")
+                
+        except Exception as e:
+            print(f"Error al procesar el ejercicio 3: {str(e)}")
+            doc.add_paragraph(f"Error al generar la solución del ejercicio 3: {str(e)}").italic = True
+        
+        doc.add_paragraph()
+        
+        # Ejercicio 4: Medidas de Tendencia Central
+        try:
+            doc.add_heading('Ejercicio 4: Medidas de Tendencia Central', level=2).style = 'Heading2Custom'
+            
+            central_data = variante["tercera_serie"][3]
+            
+            p = doc.add_paragraph("Datos del problema:")
+            p.add_run("\n" + central_data.get("title", ""))
+            
+            # Mostrar datos originales en tabla
+            tabla_datos_mtc = doc.add_table(rows=len(central_data["ranges"])+1, cols=2)
+            tabla_datos_mtc.style = 'Table Grid'
+            
+            # Encabezados
+            tabla_datos_mtc.cell(0, 0).text = "Precio en (Q)"
+            tabla_datos_mtc.cell(0, 1).text = "No. de productos"
+            
+            # Datos
+            for i, (rango, freq) in enumerate(zip(central_data["ranges"], central_data["count"]), 1):
+                tabla_datos_mtc.cell(i, 0).text = rango
+                tabla_datos_mtc.cell(i, 1).text = str(freq)
+            
+            # Paso 1: Preparación de los datos
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 1: Preparación y organización de los datos").bold = True
+            
+            # Tabla de trabajo con marcas de clase y productos
+            p = doc.add_paragraph("Para calcular las medidas de tendencia central con datos agrupados, primero necesitamos encontrar:")
+            p.add_run("\n• La marca de clase (punto medio) de cada intervalo")
+            p.add_run("\n• El producto de la marca de clase por la frecuencia (xi × fi)")
+            
+            tabla_trabajo = doc.add_table(rows=len(central_data["ranges"])+2, cols=4)
+            tabla_trabajo.style = 'Table Grid'
+            
+            # Encabezados
+            encabezados_trabajo = ["Precio (Q)", "Frecuencia (fi)", "Marca de clase (xi)", "xi × fi"]
+            for i, encabezado in enumerate(encabezados_trabajo):
+                cell = tabla_trabajo.cell(0, i)
+                cell.text = encabezado
+                cell.paragraphs[0].runs[0].bold = True
+            
+            # Preparar datos para los cálculos
+            marcas_clase = []
+            productos = []
+            total_freq = 0
+            total_producto = 0
+            
+            for rango, freq in zip(central_data["ranges"], central_data["count"]):
+                # Extraer límites
+                limites = rango.replace('[', '').replace(')', '').split('-')
+                li = float(limites[0])
+                ls = float(limites[1])
+                
+                # Marca de clase
+                xi = (li + ls) / 2
+                marcas_clase.append(xi)
+                
+                # Producto
+                producto = xi * freq
+                productos.append(producto)
+                
+                # Acumulados
+                total_freq += freq
+                total_producto += producto
+            
+            # Llenar tabla de trabajo
+            for i, (rango, freq, xi, producto) in enumerate(zip(central_data["ranges"], central_data["count"], marcas_clase, productos), 1):
+                tabla_trabajo.cell(i, 0).text = rango
+                tabla_trabajo.cell(i, 1).text = str(freq)
+                tabla_trabajo.cell(i, 2).text = f"{xi:.2f}"
+                tabla_trabajo.cell(i, 3).text = f"{producto:.2f}"
+            
+            # Fila de totales
+            tabla_trabajo.cell(len(central_data["ranges"])+1, 0).text = "TOTAL"
+            tabla_trabajo.cell(len(central_data["ranges"])+1, 1).text = str(total_freq)
+            tabla_trabajo.cell(len(central_data["ranges"])+1, 3).text = f"{total_producto:.2f}"
+            
+            # Paso 2: Cálculo de la media aritmética
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 2: Cálculo de la media aritmética").bold = True
+            
+            # Obtener media calculada
+            media = respuestas["tercera_serie"]["medidas_centrales"]["media"]
+            
+            p = doc.add_paragraph()
+            p.add_run("La media aritmética para datos agrupados se calcula con la fórmula:").bold = True
+            p.add_run("\n\nMedia = Σ(xi × fi) ÷ Σfi")
+            p.add_run(f"\n\nDonde:")
+            p.add_run(f"\n• Σ(xi × fi) = {total_producto:.2f}")
+            p.add_run(f"\n• Σfi = {total_freq}")
+            p.add_run(f"\n\nMedia = {total_producto:.2f} ÷ {total_freq} = {total_producto/total_freq:.2f}")
+            p.add_run(f"\n\nPor tanto, la media aritmética es {media}")
+            
+            # Paso 3: Cálculo de la mediana
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 3: Cálculo de la mediana").bold = True
+            
+            # Obtener mediana calculada
+            mediana = respuestas["tercera_serie"]["medidas_centrales"]["mediana"]
+            
+            # Calcular frecuencias acumuladas
+            freq_acum = []
+            acum = 0
+            for freq in central_data["count"]:
+                acum += freq
+                freq_acum.append(acum)
+            
+            # Posición de la mediana
+            n_2 = total_freq / 2
+            
+            p = doc.add_paragraph()
+            p.add_run("Para calcular la mediana con datos agrupados:").bold = True
+            p.add_run(f"\n\n1. Primero determinamos la posición de la mediana: n/2 = {total_freq}/2 = {n_2}")
+            
+            # Encontrar clase mediana
+            clase_mediana_idx = 0
+            for i, fa in enumerate(freq_acum):
+                if fa >= n_2:
+                    clase_mediana_idx = i
+                    break
+            
+            # Obtener datos de la clase mediana
+            rango_mediana = central_data["ranges"][clase_mediana_idx]
+            limites_mediana = rango_mediana.replace('[', '').replace(')', '').split('-')
+            li_mediana = float(limites_mediana[0])
+            ls_mediana = float(limites_mediana[1])
+            amplitud_mediana = ls_mediana - li_mediana
+            
+            # Frecuencias para fórmula
+            freq_clase_mediana = central_data["count"][clase_mediana_idx]
+            freq_acum_anterior = 0 if clase_mediana_idx == 0 else freq_acum[clase_mediana_idx - 1]
+            
+            p.add_run(f"\n\n2. Identificamos la clase mediana: {rango_mediana}")
+            p.add_run(f"\n\n3. Aplicamos la fórmula:")
+            p.add_run(f"\nMediana = li + ((n/2 - Fi-1) ÷ fi) × c")
+            p.add_run(f"\nDonde:")
+            p.add_run(f"\n• li = límite inferior de la clase mediana = {li_mediana}")
+            p.add_run(f"\n• n/2 = {n_2}")
+            p.add_run(f"\n• Fi-1 = frecuencia acumulada anterior = {freq_acum_anterior}")
+            p.add_run(f"\n• fi = frecuencia de la clase mediana = {freq_clase_mediana}")
+            p.add_run(f"\n• c = amplitud de la clase = {amplitud_mediana}")
+            
+            calculo_mediana = li_mediana + ((n_2 - freq_acum_anterior) / freq_clase_mediana) * amplitud_mediana
+            p.add_run(f"\n\nMediana = {li_mediana} + (({n_2} - {freq_acum_anterior}) ÷ {freq_clase_mediana}) × {amplitud_mediana}")
+            p.add_run(f"\nMediana = {li_mediana} + ({n_2 - freq_acum_anterior} ÷ {freq_clase_mediana}) × {amplitud_mediana}")
+            p.add_run(f"\nMediana = {li_mediana} + ({(n_2 - freq_acum_anterior) / freq_clase_mediana:.4f}) × {amplitud_mediana}")
+            p.add_run(f"\nMediana = {li_mediana} + {((n_2 - freq_acum_anterior) / freq_clase_mediana) * amplitud_mediana:.4f}")
+            p.add_run(f"\nMediana = {calculo_mediana:.4f}")
+            
+            p.add_run(f"\n\nPor tanto, la mediana es {mediana}")
+            
+            # Paso 4: Cálculo de la moda
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 4: Cálculo de la moda").bold = True
+            
+            # Obtener moda calculada
+            moda = respuestas["tercera_serie"]["medidas_centrales"]["moda"]
+            
+            # Encontrar clase modal (mayor frecuencia)
+            clase_modal_idx = central_data["count"].index(max(central_data["count"]))
+            freq_modal = central_data["count"][clase_modal_idx]
+            
+            # Datos de la clase modal
+            rango_modal = central_data["ranges"][clase_modal_idx]
+            limites_modal = rango_modal.replace('[', '').replace(')', '').split('-')
+            li_modal = float(limites_modal[0])
+            ls_modal = float(limites_modal[1])
+            amplitud_modal = ls_modal - li_modal
+            
+            # Frecuencias para fórmula
+            freq_anterior = 0 if clase_modal_idx == 0 else central_data["count"][clase_modal_idx - 1]
+            freq_posterior = 0 if clase_modal_idx == len(central_data["count"]) - 1 else central_data["count"][clase_modal_idx + 1]
+            
+            p = doc.add_paragraph()
+            p.add_run("Para calcular la moda con datos agrupados:").bold = True
+            p.add_run(f"\n\n1. Primero identificamos la clase modal (mayor frecuencia): {rango_modal} con frecuencia {freq_modal}")
+            
+            p.add_run(f"\n\n2. Aplicamos la fórmula:")
+            p.add_run(f"\nModa = li + (d1 ÷ (d1 + d2)) × c")
+            p.add_run(f"\nDonde:")
+            p.add_run(f"\n• li = límite inferior de la clase modal = {li_modal}")
+            p.add_run(f"\n• d1 = frecuencia modal - frecuencia anterior = {freq_modal} - {freq_anterior} = {freq_modal - freq_anterior}")
+            p.add_run(f"\n• d2 = frecuencia modal - frecuencia posterior = {freq_modal} - {freq_posterior} = {freq_modal - freq_posterior}")
+            p.add_run(f"\n• c = amplitud de la clase = {amplitud_modal}")
+            
+            # Si d1 o d2 son negativos o cero, usar valor absoluto o 1
+            d1 = max(1, freq_modal - freq_anterior)
+            d2 = max(1, freq_modal - freq_posterior)
+            
+            calculo_moda = li_modal + (d1 / (d1 + d2)) * amplitud_modal
+            p.add_run(f"\n\nModa = {li_modal} + ({d1} ÷ ({d1} + {d2})) × {amplitud_modal}")
+            p.add_run(f"\nModa = {li_modal} + ({d1} ÷ {d1 + d2}) × {amplitud_modal}")
+            p.add_run(f"\nModa = {li_modal} + ({d1 / (d1 + d2):.4f}) × {amplitud_modal}")
+            p.add_run(f"\nModa = {li_modal} + {(d1 / (d1 + d2)) * amplitud_modal:.4f}")
+            p.add_run(f"\nModa = {calculo_moda:.4f}")
+            
+            p.add_run(f"\n\nPor tanto, la moda es {moda}")
+            
+            # Paso 5: Interpretación de resultados
+            p = doc.add_paragraph()
+            p.style = 'StepCustom'
+            p.add_run("Paso 5: Interpretación de los resultados").bold = True
+            
+            p = doc.add_paragraph()
+            p.add_run("Interpretación de las medidas de tendencia central:").bold = True
+            
+            p.add_run(f"\n\n• Media = {media}: Representa el valor promedio de los precios. Si todos los productos tuvieran el mismo precio, sería este valor.")
+            
+            p.add_run(f"\n\n• Mediana = {mediana}: Es el valor que divide al conjunto de datos en dos partes iguales. El 50% de los productos tienen precios inferiores a este valor y el 50% tienen precios superiores.")
+            
+            p.add_run(f"\n\n• Moda = {moda}: Representa el valor que aparece con mayor frecuencia. Es el precio más común entre los productos.")
+            
+            # Comparar las tres medidas
+            if abs(media - mediana) < 200 and abs(media - moda) < 200:
+                p.add_run("\n\nLas tres medidas son relativamente cercanas, lo que sugiere que la distribución de precios es aproximadamente simétrica.")
+            elif media > mediana and mediana > moda:
+                p.add_run("\n\nComo Media > Mediana > Moda, la distribución de precios tiene un sesgo positivo (hacia la derecha), indicando que hay algunos productos con precios considerablemente más altos que el resto.")
+            elif media < mediana and mediana < moda:
+                p.add_run("\n\nComo Media < Mediana < Moda, la distribución de precios tiene un sesgo negativo (hacia la izquierda), indicando que hay algunos productos con precios considerablemente más bajos que el resto.")
+            else:
+                p.add_run("\n\nLas relaciones entre las medidas de tendencia central sugieren una distribución irregular o multimodal de los precios.")
+                
+        except Exception as e:
+            print(f"Error al procesar el ejercicio 4: {str(e)}")
+            doc.add_paragraph(f"Error al generar la solución del ejercicio 4: {str(e)}").italic = True
+        
+        # Pie de página
+        doc.add_paragraph()
+        footer = doc.add_paragraph("Universidad Panamericana - Facultad de Humanidades")
+        footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        footer_detail = doc.add_paragraph(f"Solución Matemática Detallada - {tipo_texto} - Sección {seccion} - Variante {variante_id}")
+        footer_detail.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Guardar los archivos
+        detailed_filename = f'Solucion_Matematica_Detallada_{seccion}_{tipo_evaluacion}_{variante_id}.docx'
+        detailed_path = os.path.join(output_dir, detailed_filename)
+        
+        simple_filename = f'Solucion_Matematica_Detallada_{variante_id}.docx'
+        simple_path = os.path.join(PLANTILLAS_FOLDER, simple_filename)
+        
+        doc.save(detailed_path)
+        print(f"Solución detallada guardada en: {detailed_path}")
+        
+        doc.save(simple_path)
+        print(f"Solución detallada guardada en: {simple_path}")
+        
+        print(f"===== FINALIZADA CREACIÓN DE SOLUCIÓN MATEMÁTICA DETALLADA =====\n")
+        
+        return simple_filename
+        
+    except Exception as e:
+        print(f"Error general en solución matemática detallada: {str(e)}")
+        traceback.print_exc()
+        return None
 
 def crear_solucion_matematica_simplificada(variante_id, seccion="A", tipo_evaluacion="parcial1"):
     """Crea un archivo Word básico con soluciones matemáticas - versión simplificada"""
@@ -2863,7 +4077,7 @@ def ver_calificaciones(seccion, tipo_evaluacion):
                           tipo_evaluacion=tipo_evaluacion)
 
 @app.route('/generar_examen', methods=['POST'])
-def generar_examen():
+def generar_examen_handler():
     try:
         num_variantes = int(request.form.get('num_variantes', 1))
         seccion = request.form.get('seccion', 'A')
@@ -2876,21 +4090,266 @@ def generar_examen():
         anio = request.form.get('anio', '')
         salon = request.form.get('salon', '')
         
-        # Activar el modo de depuración detallada
-        debug_mode = True
+        # Manejo del logo
+        logo_path = None
+        if 'logo' in request.files and request.files['logo'].filename:
+            logo = request.files['logo']
+            logo_filename = secure_filename(logo.filename)
+            logo_path = os.path.join(UPLOAD_FOLDER, logo_filename)
+            logo.save(logo_path)
         
-        if debug_mode:
-            print("\n===== INICIANDO GENERACIÓN DE EXÁMENES =====")
-            print(f"Variantes: {num_variantes}, Sección: {seccion}, Tipo: {tipo_evaluacion}")
-            print(f"Licenciatura: {licenciatura}, Curso: {nombre_curso}")
-            print(f"Docente: {nombre_docente}, Año: {anio}, Salón: {salon}")
+        # Manejo de la plantilla
+        plantilla_path = None
+        if 'plantilla' in request.files and request.files['plantilla'].filename:
+            plantilla = request.files['plantilla']
+            plantilla_filename = secure_filename(plantilla.filename)
+            plantilla_path = os.path.join(UPLOAD_FOLDER, plantilla_filename)
+            plantilla.save(plantilla_path)
+        
+        # Utilizar la nueva función de generación con solución detallada
+        variantes_generadas = generar_examen(
+            num_variantes=num_variantes,
+            seccion=seccion,
+            tipo_evaluacion=tipo_evaluacion,
+            logo_path=logo_path,
+            plantilla_path=plantilla_path,
+            licenciatura=licenciatura,
+            nombre_curso=nombre_curso,
+            nombre_docente=nombre_docente,
+            anio=anio,
+            salon=salon,
+            uso_detallado=True  # Activar generación de solución detallada
+        )
+        
+        # Verificar si hubo éxito
+        if variantes_generadas:
+            flash(f'Se han generado {num_variantes} variantes de examen para la sección {seccion}', 'success')
+        else:
+            flash('Error: No se pudieron generar las variantes. Revise los logs para más detalles.', 'warning')
+        
+        return redirect(url_for('index'))
+    except Exception as e:
+        error_msg = f'Error al generar exámenes: {str(e)}'
+        print(error_msg)
+        traceback.print_exc()
+        flash(error_msg, 'danger')
+        return redirect(url_for('index'))
+
+def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluacion, variante, 
+                            licenciatura="", nombre_curso="Estadística Básica", nombre_docente="Ing. Marco Antonio Jiménez", 
+                            anio="2025", salon=""):
+    """
+    Procesa una plantilla de examen reemplazando los placeholders con el contenido generado.
+    
+    Parámetros:
+    - plantilla_path: Ruta al archivo de plantilla Word
+    - variante_id, seccion, tipo_evaluacion: Información del examen
+    - variante: Datos de la variante con preguntas y ejercicios
+    - licenciatura, nombre_curso, nombre_docente, anio, salon: Datos para personalización
+    """
+    try:
+        from docx import Document
+        import re
+        
+        print(f"Procesando plantilla: {plantilla_path}")
+        
+        # Cargar la plantilla
+        doc = Document(plantilla_path)
+        
+        # Convertir el tipo de evaluación a texto legible
+        tipo_textos = {
+            'parcial1': 'Primer Examen Parcial',
+            'parcial2': 'Segundo Examen Parcial',
+            'final': 'Examen Final',
+            'corto': 'Evaluación Corta',
+            'recuperacion': 'Examen de Recuperación',
+            'test': 'Prueba de Evaluación'
+        }
+        tipo_texto = tipo_textos.get(tipo_evaluacion, 'Evaluación Parcial')
+        
+        # Reemplazar placeholders en todo el documento
+        placeholders = {
+            '{variante}': variante_id,
+            '{salon}': salon,
+            '{licenciatura}': licenciatura,
+            '{nombre_curso}': nombre_curso,
+            '{nombre_docente}': nombre_docente,
+            '{anio}': anio,
+            '{tipo_evaluacion}': tipo_texto
+        }
+        
+        # Primero, reemplazamos los placeholders simples en todo el documento
+        for paragraph in doc.paragraphs:
+            for key, value in placeholders.items():
+                if key in paragraph.text:
+                    for run in paragraph.runs:
+                        run.text = run.text.replace(key, value)
+        
+        # Para tablas
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        for key, value in placeholders.items():
+                            if key in paragraph.text:
+                                for run in paragraph.runs:
+                                    run.text = run.text.replace(key, value)
+        
+        # Ahora, buscamos los placeholders de contenido de serie y los reemplazamos
+        # con el contenido generado
+        
+        # Función para generar el texto de pregunta de la primera serie
+        def generar_primera_serie(preguntas):
+            contenido = []
+            for i, pregunta in enumerate(preguntas, 1):
+                # Texto de la pregunta
+                contenido.append(f"{i}. {pregunta['pregunta']}")
+                
+                # Opciones
+                for opcion in pregunta.get('opciones', []):
+                    contenido.append(f"   • {opcion}")
+                
+                contenido.append("")  # Línea en blanco entre preguntas
             
-            # Verificar directorios
-            for folder in [EXAMENES_FOLDER, HOJAS_RESPUESTA_FOLDER, PLANTILLAS_FOLDER, VARIANTES_FOLDER]:
-                if not os.path.exists(folder):
-                    os.makedirs(folder)
-                    print(f"Directorio creado: {folder}")
-                print(f"Directorio existente: {folder}, Permisos de escritura: {os.access(folder, os.W_OK)}")
+            return "\n".join(contenido)
+        
+        # Función para generar el texto de la segunda serie
+        def generar_segunda_serie(escenarios):
+            contenido = []
+            for i, escenario in enumerate(escenarios, 1):
+                # Texto del escenario
+                contenido.append(f"{i}. {escenario.get('escenario', '')}")
+                
+                # Opciones (sólo si se necesitan)
+                for opcion in escenario.get('opciones', []):
+                    contenido.append(f"   • {opcion}")
+                
+                contenido.append("")  # Línea en blanco entre escenarios
+            
+            return "\n".join(contenido)
+            
+        # Función para generar el texto de la tercera serie
+        def generar_tercera_serie(ejercicios):
+            contenido = []
+            
+            # Ejercicio 1: Coeficiente de Gini
+            if len(ejercicios) > 0:
+                gini_data = ejercicios[0]
+                contenido.append(f"1. {gini_data.get('title', 'Problema de Coeficiente de Gini')}")
+                
+                # Agregar instrucciones del ejercicio
+                contenido.append("   a) Complete la tabla para calcular el coeficiente de Gini.")
+                contenido.append("   b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
+                contenido.append("   c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
+                contenido.append("")
+            
+            # Ejercicio 2: Distribución de frecuencias
+            if len(ejercicios) > 1:
+                sturgers_data = ejercicios[1]
+                contenido.append(f"2. {sturgers_data.get('title', 'Problema de Distribución de Frecuencias')}")
+                contenido.append("   Construya la tabla de distribución de frecuencias correspondiente.")
+                contenido.append("")
+            
+            # Ejercicio 3: Diagrama de Tallo y Hoja
+            if len(ejercicios) > 2:
+                stem_leaf_data = ejercicios[2]
+                contenido.append(f"3. {stem_leaf_data.get('title', 'Problema de Diagrama de Tallo y Hoja')}")
+                contenido.append("   a) Realizar un Diagrama de Tallo y Hoja para identificar donde se encuentra la mayor concentración de los datos.")
+                contenido.append("   b) Interprete los datos y explique brevemente sus resultados.")
+                contenido.append("")
+            
+            # Ejercicio 4: Medidas de tendencia central
+            if len(ejercicios) > 3:
+                central_data = ejercicios[3]
+                contenido.append(f"4. {central_data.get('title', 'Problema de Medidas de Tendencia Central')}")
+                contenido.append("")
+            
+            return "\n".join(contenido)
+        
+        # Ahora reemplazamos los placeholders de contenido
+        primera_serie_text = generar_primera_serie(variante.get("primera_serie", []))
+        segunda_serie_text = generar_segunda_serie(variante.get("segunda_serie", []))
+        tercera_serie_text = generar_tercera_serie(variante.get("tercera_serie", []))
+        
+        # Reemplazar placeholders de series en párrafos
+        for paragraph in doc.paragraphs:
+            text = paragraph.text
+            
+            if "{primera_serie}" in text:
+                # Reemplazamos el placeholder con el contenido real
+                paragraph.clear()
+                paragraph.add_run(primera_serie_text)
+                print("Reemplazado {primera_serie} en párrafo")
+                
+            elif "{segunda_serie}" in text:
+                paragraph.clear()
+                paragraph.add_run(segunda_serie_text)
+                print("Reemplazado {segunda_serie} en párrafo")
+                
+            elif "{tercera_serie}" in text:
+                paragraph.clear()
+                paragraph.add_run(tercera_serie_text)
+                print("Reemplazado {tercera_serie} en párrafo")
+        
+        # También buscar en tablas
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        text = paragraph.text
+                        
+                        if "{primera_serie}" in text:
+                            paragraph.clear()
+                            paragraph.add_run(primera_serie_text)
+                            print("Reemplazado {primera_serie} en tabla")
+                            
+                        elif "{segunda_serie}" in text:
+                            paragraph.clear()
+                            paragraph.add_run(segunda_serie_text)
+                            print("Reemplazado {segunda_serie} en tabla")
+                            
+                        elif "{tercera_serie}" in text:
+                            paragraph.clear()
+                            paragraph.add_run(tercera_serie_text)
+                            print("Reemplazado {tercera_serie} en tabla")
+        
+        return doc
+        
+    except Exception as e:
+        print(f"Error al procesar plantilla: {str(e)}")
+        traceback.print_exc()
+        return None
+
+def generar_examen(num_variantes=1, seccion="A", tipo_evaluacion="parcial1", logo_path=None, 
+                  plantilla_path=None, licenciatura="", nombre_curso="", nombre_docente="", 
+                  anio="", salon="", uso_detallado=True):
+    """
+    Función principal para generar exámenes con múltiples variantes.
+    
+    Parámetros:
+    - num_variantes: Número de variantes a generar
+    - seccion: Sección del curso
+    - tipo_evaluacion: Tipo de evaluación (parcial1, parcial2, final, etc.)
+    - logo_path: Ruta al logo de la institución
+    - plantilla_path: Ruta a la plantilla Word opcional
+    - licenciatura, nombre_curso, nombre_docente, anio, salon: Datos para personalizar el examen
+    - uso_detallado: Si es True, genera la solución matemática detallada; si es False, usa la versión simplificada
+    
+    Retorna:
+    - Lista de variantes generadas
+    """
+    try:
+        print("\n===== INICIANDO GENERACIÓN DE EXÁMENES =====")
+        print(f"Variantes: {num_variantes}, Sección: {seccion}, Tipo: {tipo_evaluacion}")
+        print(f"Licenciatura: {licenciatura}, Curso: {nombre_curso}")
+        print(f"Docente: {nombre_docente}, Año: {anio}, Salón: {salon}")
+        
+        # Verificar directorios
+        for folder in [EXAMENES_FOLDER, HOJAS_RESPUESTA_FOLDER, PLANTILLAS_FOLDER, VARIANTES_FOLDER]:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+                print(f"Directorio creado: {folder}")
+            print(f"Directorio existente: {folder}, Permisos de escritura: {os.access(folder, os.W_OK)}")
         
         # Crear carpeta con timestamp para esta generación
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2900,46 +4359,29 @@ def generar_examen():
         for folder in [EXAMENES_FOLDER, HOJAS_RESPUESTA_FOLDER, PLANTILLAS_FOLDER, VARIANTES_FOLDER]:
             output_dir = os.path.join(folder, base_output_dir)
             os.makedirs(output_dir, exist_ok=True)
-            if debug_mode:
-                print(f"Directorio de salida creado: {output_dir}")
+            print(f"Directorio de salida creado: {output_dir}")
         
-        # Manejo del logo
-        logo_path = None
-        if 'logo' in request.files and request.files['logo'].filename:
-            logo = request.files['logo']
-            logo_filename = secure_filename(logo.filename)
-            logo_path = os.path.join(UPLOAD_FOLDER, logo_filename)
-            if debug_mode:
-                print(f"Guardando logo en: {logo_path}")
-            logo.save(logo_path)
+        # Verificar logo y plantilla
+        if logo_path:
+            print(f"Guardando logo en: {logo_path}")
         
-        # Manejo de la plantilla
-        plantilla_path = None
-        if 'plantilla' in request.files and request.files['plantilla'].filename:
-            plantilla = request.files['plantilla']
-            plantilla_filename = secure_filename(plantilla.filename)
-            plantilla_path = os.path.join(UPLOAD_FOLDER, plantilla_filename)
-            if debug_mode:
-                print(f"Guardando plantilla en: {plantilla_path}")
-            plantilla.save(plantilla_path)
+        if plantilla_path:
+            print(f"Guardando plantilla en: {plantilla_path}")
         
         # Generar variantes
         variantes_generadas = []
         
         for i in range(num_variantes):
             variante_id = f"V{i+1}"
-            if debug_mode:
-                print(f"\n----- Generando variante {variante_id} -----")
+            print(f"\n----- Generando variante {variante_id} -----")
             
             # Generar variante y respuestas
             try:
                 variante, respuestas = generar_variante(variante_id, seccion, tipo_evaluacion)
-                if debug_mode:
-                    print(f"Variante generada correctamente: {variante_id}")
+                print(f"Variante generada correctamente: {variante_id}")
             except Exception as e:
-                if debug_mode:
-                    print(f"Error al generar variante {variante_id}: {str(e)}")
-                    traceback.print_exc()
+                print(f"Error al generar variante {variante_id}: {str(e)}")
+                traceback.print_exc()
                 continue
             
             # Guardar variante y respuestas en la carpeta con timestamp
@@ -2949,11 +4391,9 @@ def generar_examen():
             with open(os.path.join(VARIANTES_FOLDER, base_output_dir, f'respuestas_{variante_id}.json'), 'w', encoding='utf-8') as f:
                 json.dump(respuestas, f, ensure_ascii=False, indent=2)
             
-            # Crear documentos
+            # 1. Crear examen Word
             try:
-                # Crear examen Word
-                if debug_mode:
-                    print(f"Creando examen Word para variante {variante_id}...")
+                print(f"Creando examen Word para variante {variante_id}...")
                 examen_filename = crear_examen_word(
                     variante_id, 
                     seccion, 
@@ -2966,65 +4406,61 @@ def generar_examen():
                     anio,
                     salon
                 )
-                if debug_mode:
-                    if examen_filename:
-                        print(f"Examen Word creado: {examen_filename}")
-                    else:
-                        print("Error: No se pudo crear el examen Word")
+                if examen_filename:
+                    print(f"Examen Word creado: {examen_filename}")
+                else:
+                    print("Error: No se pudo crear el examen Word")
             except Exception as e:
-                if debug_mode:
-                    print(f"Error al crear examen Word: {str(e)}")
-                    traceback.print_exc()
+                print(f"Error al crear examen Word: {str(e)}")
+                traceback.print_exc()
                 examen_filename = None
             
+            # 2. Crear hoja de respuestas
             try:
-                # Crear hoja de respuestas
-                if debug_mode:
-                    print(f"Creando hoja de respuestas para variante {variante_id}...")
+                print(f"Creando hoja de respuestas para variante {variante_id}...")
                 hoja_filename = crear_hoja_respuestas(variante_id, seccion, tipo_evaluacion)
-                if debug_mode:
-                    if hoja_filename:
-                        print(f"Hoja de respuestas creada: {hoja_filename}")
-                    else:
-                        print("Error: No se pudo crear la hoja de respuestas")
+                if hoja_filename:
+                    print(f"Hoja de respuestas creada: {hoja_filename}")
+                else:
+                    print("Error: No se pudo crear la hoja de respuestas")
             except Exception as e:
-                if debug_mode:
-                    print(f"Error al crear hoja de respuestas: {str(e)}")
-                    traceback.print_exc()
+                print(f"Error al crear hoja de respuestas: {str(e)}")
+                traceback.print_exc()
                 hoja_filename = None
             
+            # 3. Crear plantilla de calificación
             try:
-                # Crear plantilla de calificación
-                if debug_mode:
-                    print(f"Creando plantilla de calificación para variante {variante_id}...")
+                print(f"Creando plantilla de calificación para variante {variante_id}...")
                 plantilla_filename = crear_plantilla_calificacion(variante_id, seccion, tipo_evaluacion)
-                if debug_mode:
-                    if plantilla_filename:
-                        print(f"Plantilla de calificación creada: {plantilla_filename}")
-                    else:
-                        print("Error: No se pudo crear la plantilla de calificación")
+                if plantilla_filename:
+                    print(f"Plantilla de calificación creada: {plantilla_filename}")
+                else:
+                    print("Error: No se pudo crear la plantilla de calificación")
             except Exception as e:
-                if debug_mode:
-                    print(f"Error al crear plantilla de calificación: {str(e)}")
-                    traceback.print_exc()
+                print(f"Error al crear plantilla de calificación: {str(e)}")
+                traceback.print_exc()
                 plantilla_filename = None
             
+            # 4. Crear solución matemática (detallada o simplificada)
             try:
-                # Crear solución matemática
-                if debug_mode:
-                    print(f"Creando solución matemática para variante {variante_id}...")
-                solucion_filename = crear_solucion_matematica_simplificada(variante_id, seccion, tipo_evaluacion)
-                if debug_mode:
-                    if solucion_filename:
-                        print(f"Solución matemática creada: {solucion_filename}")
-                    else:
-                        print("Error: No se pudo crear la solución matemática")
+                print(f"Creando solución matemática para variante {variante_id}...")
+                if uso_detallado:
+                    # Usar la solución detallada que incluye explicaciones y gráficos
+                    solucion_filename = crear_solucion_matematica_detallada(variante_id, seccion, tipo_evaluacion)
+                else:
+                    # Usar la solución simplificada como respaldo
+                    solucion_filename = crear_solucion_matematica_simplificada(variante_id, seccion, tipo_evaluacion)
+                
+                if solucion_filename:
+                    print(f"Solución matemática creada: {solucion_filename}")
+                else:
+                    print("Error: No se pudo crear la solución matemática")
             except Exception as e:
-                if debug_mode:
-                    print(f"Error al crear solución matemática: {str(e)}")
-                    traceback.print_exc()
+                print(f"Error al crear solución matemática: {str(e)}")
+                traceback.print_exc()
                 solucion_filename = None
             
+            # Registrar variante generada
             variantes_generadas.append({
                 'id': variante_id,
                 'examen': examen_filename,
@@ -3037,7 +4473,7 @@ def generar_examen():
                 'directorio': base_output_dir
             })
         
-        # Registrar en el historial
+        # Actualizar historial
         historial = cargar_historial()
         
         # Obtener nombres para mostrar
@@ -3046,7 +4482,8 @@ def generar_examen():
             'parcial2': 'Segundo Parcial',
             'final': 'Examen Final',
             'corto': 'Evaluación Corta',
-            'recuperacion': 'Recuperación'
+            'recuperacion': 'Recuperación',
+            'test': 'Prueba'
         }
         
         # Añadir entrada al historial
@@ -3072,25 +4509,22 @@ def generar_examen():
         
         guardar_historial(historial)
         
-        if debug_mode:
-            print("\n===== FINALIZADA GENERACIÓN DE EXÁMENES =====")
-            print(f"Variantes generadas: {len(variantes_generadas)}")
-            for v in variantes_generadas:
-                print(f"Variante {v['id']}:")
-                print(f"  - Examen: {v['examen']}")
-                print(f"  - Hoja: {v['hoja']}")
-                print(f"  - Plantilla: {v['plantilla']}")
-                print(f"  - Solución: {v['solucion_matematica']}")
+        print("\n===== FINALIZADA GENERACIÓN DE EXÁMENES =====")
+        print(f"Variantes generadas: {len(variantes_generadas)}")
+        for v in variantes_generadas:
+            print(f"Variante {v['id']}:")
+            print(f"  - Examen: {v['examen']}")
+            print(f"  - Hoja: {v['hoja']}")
+            print(f"  - Plantilla: {v['plantilla']}")
+            print(f"  - Solución: {v['solucion_matematica']}")
         
-        flash(f'Se han generado {num_variantes} variantes de examen para la sección {seccion}', 'success')
-        return redirect(url_for('index'))
+        return variantes_generadas
+    
     except Exception as e:
-        error_msg = f'Error al generar exámenes: {str(e)}'
-        print(error_msg)
+        print(f"Error global en generación de exámenes: {str(e)}")
         traceback.print_exc()
-        flash(error_msg, 'danger')
-        return redirect(url_for('index'))
-        
+        return []
+
 @app.route('/verificar_generacion_documentos', methods=['GET'])
 def verificar_generacion_documentos():
     """
