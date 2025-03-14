@@ -11,5 +11,18 @@
     "hoja": "HojaRespuestas_V1.pdf",
     "plantilla": "Plantilla_V1.pdf",
     "solucion_matematica": "Solucion_Matematica_V1.docx"
+  },
+  {
+    "id": "V1",
+    "seccion": "M2",
+    "tipo_evaluacion": "parcial1",
+    "tipo_texto": "Primer Parcial",
+    "fecha_generacion": "13/03/2025 22:18",
+    "timestamp": "20250313_221829",
+    "directorio": "M2_parcial1_20250313_221829",
+    "examen": "Examen_V1.docx",
+    "hoja": "HojaRespuestas_V1.pdf",
+    "plantilla": "Plantilla_V1.pdf",
+    "solucion_matematica": "Solucion_Matematica_V1.docx"
   }
 ]

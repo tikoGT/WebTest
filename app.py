@@ -724,6 +724,9 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
         print(f"Logo path: {logo_path}")
         print(f"Plantilla path: {plantilla_path}")
         
+        # Importar Document aquí para asegurarse de que está disponible
+        from docx import Document
+        
         # Cargar la variante
         with open(os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json'), 'r', encoding='utf-8') as f:
             variante = json.load(f)
@@ -741,7 +744,7 @@ def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo
             print(f"Plantilla encontrada: {plantilla_path}")
             try:
                 # Intentar abrir la plantilla para verificar que es un archivo .docx válido
-                from docx import Document
+                
                 doc = Document(plantilla_path)
                 use_template = True
                 print(f"Plantilla cargada correctamente")
