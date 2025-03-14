@@ -1,12 +1,12 @@
 [
   {
     "id": "V1",
-    "seccion": "DD",
+    "seccion": "AA",
     "tipo_evaluacion": "parcial1",
     "tipo_texto": "Primer Parcial",
-    "fecha_generacion": "14/03/2025 00:30",
-    "timestamp": "20250314_003040",
-    "directorio": "DD_parcial1_20250314_003040",
+    "fecha_generacion": "14/03/2025 00:33",
+    "timestamp": "20250314_003358",
+    "directorio": "AA_parcial1_20250314_003358",
     "examen": "Examen_V1.docx",
     "hoja": "HojaRespuestas_V1.pdf",
     "plantilla": "Plantilla_V1.pdf",

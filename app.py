@@ -3564,12 +3564,7 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
                             anio="2025", salon=""):
     """
     Procesa una plantilla de examen reemplazando los placeholders con el contenido generado.
-    
-    Parámetros:
-    - plantilla_path: Ruta al archivo de plantilla Word
-    - variante_id, seccion, tipo_evaluacion: Información del examen
-    - variante: Datos de la variante con preguntas y ejercicios
-    - licenciatura, nombre_curso, nombre_docente, anio, salon: Datos para personalización
+    Versión mejorada para evitar problemas de formato con asteriscos.
     """
     try:
         from docx import Document
@@ -3602,32 +3597,67 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
             '{tipo_evaluacion}': tipo_texto
         }
         
-        # Primero, reemplazamos los placeholders simples en todo el documento
+        # SOLUCIÓN MEJORADA: Método más seguro para reemplazar texto en Word
+        # que preserva el formato original de la plantilla
+        
+        # Para párrafos
         for paragraph in doc.paragraphs:
-            for key, value in placeholders.items():
-                if key in paragraph.text:
-                    paragraph.text = paragraph.text.replace(key, value)
-                    # Restaurar el formato después de reemplazar
-                    for run in paragraph.runs:
-                        run.font.name = "Times New Roman"
+            # Solo procesar párrafos que contienen placeholders
+            if any(key in paragraph.text for key in placeholders.keys()):
+                # Conservar el estilo original
+                original_style = paragraph.style
+                
+                # Texto completo antes de procesarlo
+                original_text = paragraph.text
+                new_text = original_text
+                
+                # Reemplazar todos los placeholders en este texto
+                for key, value in placeholders.items():
+                    if key in new_text:
+                        new_text = new_text.replace(key, value)
+                
+                # Solo si realmente hubo cambios
+                if new_text != original_text:
+                    # Limpiar el párrafo y reemplazar con el nuevo texto
+                    paragraph.clear()
+                    paragraph.add_run(new_text)
+                    
+                    # Restaurar el estilo original
+                    paragraph.style = original_style
         
         # Para tablas
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for paragraph in cell.paragraphs:
-                        for key, value in placeholders.items():
-                            if key in paragraph.text:
-                                paragraph.text = paragraph.text.replace(key, value)
-                                # Restaurar el formato después de reemplazar
-                                for run in paragraph.runs:
-                                    run.font.name = "Times New Roman"
+                        # Solo procesar párrafos que contienen placeholders
+                        if any(key in paragraph.text for key in placeholders.keys()):
+                            # Conservar el estilo original
+                            original_style = paragraph.style
+                            
+                            # Texto completo antes de procesarlo
+                            original_text = paragraph.text
+                            new_text = original_text
+                            
+                            # Reemplazar todos los placeholders en este texto
+                            for key, value in placeholders.items():
+                                if key in new_text:
+                                    new_text = new_text.replace(key, value)
+                            
+                            # Solo si realmente hubo cambios
+                            if new_text != original_text:
+                                # Limpiar el párrafo y reemplazar con el nuevo texto
+                                paragraph.clear()
+                                paragraph.add_run(new_text)
+                                
+                                # Restaurar el estilo original
+                                paragraph.style = original_style
         
-        # Función para generar el texto de pregunta de la primera serie
+        # Función para generar el contenido de las series
         def generar_primera_serie(preguntas):
             contenido = []
             for i, pregunta in enumerate(preguntas, 1):
-                # Texto de la pregunta
+                # Texto de la pregunta - sin formato especial, se aplicará desde la plantilla
                 contenido.append(f"{i}. {pregunta['pregunta']}")
                 
                 # Opciones
@@ -3638,22 +3668,20 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
             
             return "\n".join(contenido)
         
-        # Función para generar el texto de la segunda serie
         def generar_segunda_serie(escenarios):
             contenido = []
             for i, escenario in enumerate(escenarios, 1):
-                # Texto del escenario
+                # Texto del escenario - sin formato especial
                 contenido.append(f"{i}. {escenario.get('escenario', '')}")
                 
-                # Opciones (sólo si se necesitan)
+                # Opciones
                 for opcion in escenario.get('opciones', []):
                     contenido.append(f"   • {opcion}")
                 
                 contenido.append("")  # Línea en blanco entre escenarios
             
             return "\n".join(contenido)
-            
-        # Función para generar el texto de la tercera serie
+        
         def generar_tercera_serie(ejercicios):
             contenido = []
             
@@ -3662,7 +3690,7 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
                 gini_data = ejercicios[0]
                 contenido.append(f"1. {gini_data.get('title', 'Problema de Coeficiente de Gini')}")
                 
-                # Agregar instrucciones del ejercicio
+                # Agregar instrucciones del ejercicio sin formato especial
                 contenido.append("   a) Complete la tabla para calcular el coeficiente de Gini.")
                 contenido.append("   b) Calcule el coeficiente de Gini utilizando la fórmula correspondiente.")
                 contenido.append("   c) Interprete el resultado obtenido respecto a la desigualdad en la distribución de salarios.")
@@ -3691,52 +3719,52 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
             
             return "\n".join(contenido)
         
-        # Ahora reemplazamos los placeholders de contenido
+        # Generar contenido sin aplicar formato especial
         primera_serie_text = generar_primera_serie(variante.get("primera_serie", []))
         segunda_serie_text = generar_segunda_serie(variante.get("segunda_serie", []))
         tercera_serie_text = generar_tercera_serie(variante.get("tercera_serie", []))
         
-        # Este bucle busca y reemplaza los marcadores de sección en párrafos
-        for paragraph in doc.paragraphs:
-            text = paragraph.text
-            if "{primera_serie}" in text:
-                # Reemplazamos el texto completo con las preguntas, manteniendo el formato
-                paragraph.clear()
-                para = paragraph.add_run(primera_serie_text)
-                para.font.name = "Times New Roman"
-                print("Reemplazado {primera_serie} en párrafo")
-            elif "{segunda_serie}" in text:
-                paragraph.clear()
-                para = paragraph.add_run(segunda_serie_text)
-                para.font.name = "Times New Roman"
-                print("Reemplazado {segunda_serie} en párrafo")
-            elif "{tercera_serie}" in text:
-                paragraph.clear()
-                para = paragraph.add_run(tercera_serie_text)
-                para.font.name = "Times New Roman"
-                print("Reemplazado {tercera_serie} en párrafo")
+        # Diccionario para secciones especiales
+        secciones = {
+            "{primera_serie}": primera_serie_text,
+            "{segunda_serie}": segunda_serie_text,
+            "{tercera_serie}": tercera_serie_text
+        }
         
-        # Buscamos marcadores también en tablas
+        # Reemplazar las secciones especiales
+        for paragraph in doc.paragraphs:
+            for marcador, contenido in secciones.items():
+                if marcador in paragraph.text:
+                    # Preservar estilo
+                    original_style = paragraph.style
+                    
+                    # Limpiar y reemplazar
+                    paragraph.clear()
+                    paragraph.add_run(contenido)
+                    
+                    # Restaurar estilo
+                    paragraph.style = original_style
+                    print(f"Reemplazado {marcador} en párrafo")
+                    break  # Salir del bucle si encontramos un marcador
+        
+        # También en tablas
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for paragraph in cell.paragraphs:
-                        text = paragraph.text
-                        if "{primera_serie}" in text:
-                            paragraph.clear()
-                            para = paragraph.add_run(primera_serie_text)
-                            para.font.name = "Times New Roman"
-                            print("Reemplazado {primera_serie} en tabla")
-                        elif "{segunda_serie}" in text:
-                            paragraph.clear()
-                            para = paragraph.add_run(segunda_serie_text)
-                            para.font.name = "Times New Roman"
-                            print("Reemplazado {segunda_serie} en tabla")
-                        elif "{tercera_serie}" in text:
-                            paragraph.clear()
-                            para = paragraph.add_run(tercera_serie_text)
-                            para.font.name = "Times New Roman"
-                            print("Reemplazado {tercera_serie} en tabla")
+                        for marcador, contenido in secciones.items():
+                            if marcador in paragraph.text:
+                                # Preservar estilo
+                                original_style = paragraph.style
+                                
+                                # Limpiar y reemplazar
+                                paragraph.clear()
+                                paragraph.add_run(contenido)
+                                
+                                # Restaurar estilo
+                                paragraph.style = original_style
+                                print(f"Reemplazado {marcador} en tabla")
+                                break  # Salir del bucle si encontramos un marcador
         
         return doc
         
@@ -3744,7 +3772,7 @@ def procesar_plantilla_examen(plantilla_path, variante_id, seccion, tipo_evaluac
         print(f"Error al procesar plantilla: {str(e)}")
         traceback.print_exc()
         return None
-
+        
 def crear_examen_word(variante_id, seccion="A", tipo_evaluacion="parcial1", logo_path=None, plantilla_path=None, 
                   licenciatura="", nombre_curso="Estadística Básica", nombre_docente="Ing. Marco Antonio Jiménez", 
                   anio="2025", salon=""):
