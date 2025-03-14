@@ -1,0 +1,281 @@
+{
+  "id": "V1",
+  "primera_serie": [
+    {
+      "pregunta": "Las Variables Estadísticas pueden ser:",
+      "opciones": [
+        "Discretas",
+        "Cualitativas",
+        "Indiscretas",
+        "Cuantitativas",
+        "Numéricas"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "Es el conjunto de todos los elementos a los que se somete a un estudio estadístico.",
+      "opciones": [
+        "Muestra",
+        "Población",
+        "Individuo",
+        "Muestreo"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "La toma de temperatura para ingresar a los centros comerciales es una variable:",
+      "opciones": [
+        "Cualitativa",
+        "Cuantitativa"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "¿La siguiente imagen, representa un diagrama de tallo y hoja?",
+      "opciones": [
+        "Verdadero",
+        "Falso"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "Trata del recuento, ordenación y clasificación de los datos obtenidos por las observaciones, para poder hacer comparaciones y obtener conclusiones.",
+      "opciones": [
+        "Población",
+        "Cálculos",
+        "Estadística",
+        "Frecuencia",
+        "Ninguna de las anteriores"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "pregunta": "¿Es un conjunto representativo de la población de referencia, el número de individuos es menor que el de la población?",
+      "opciones": [
+        "Valor",
+        "Dato",
+        "Experimento",
+        "Población",
+        "Muestra",
+        "Todas las anteriores"
+      ],
+      "respuesta_correcta": 4
+    },
+    {
+      "pregunta": "¿Cuál de las siguientes medidas de tendencia central se ve más afectada por valores extremos?",
+      "opciones": [
+        "Media",
+        "Mediana",
+        "Moda",
+        "Rango"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "¿Cuál es el método que permite calcular el número de grupos, intervalos o clases a construer para una table de distribución de frecuencias?",
+      "opciones": [
+        "Método de mínimos cuadrados",
+        "Coeficiente de Gini",
+        "Método Sturgers",
+        "La regla empírica"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "pregunta": "Las Fases de un estudio estadístico son:",
+      "opciones": [
+        "Planteamiento del Problema",
+        "Simplificar los Datos",
+        "Recolectar y Ordenar los Datos",
+        "Analizar los Datos",
+        "Interpretar y Presentar Resultados",
+        "Ninguna de las anteriores"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "¿Quién ordeno o realizo el primer catastro o Censo de (bienes inmuebles) considerado el primero en Europa?",
+      "opciones": [
+        "El Rey Juan Carlos",
+        "El Rey Guillermo",
+        "El Rey Constantino",
+        "El Rey Ricardo",
+        "El Rey Federico de Edimburgo"
+      ],
+      "respuesta_correcta": 1
+    }
+  ],
+  "segunda_serie": [
+    {
+      "escenario": "Un departamento de recursos humanos ha realizado una encuesta sobre los tiempos de transporte (en minutos) que los empleados tardan en llegar a la oficina. Los datos obtenidos son continuos y quieren mostrar cómo se distribuyen estos tiempos, identificando claramente dónde se concentra la mayoría de los casos.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "escenario": "Una compañía de telecomunicaciones quiere representar visualmente la distribución porcentual de sus ingresos por tipo de servicio (internet, telefonía fija, telefonía móvil, televisión por cable y servicios corporativos) durante el año fiscal 2023.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "escenario": "Una universidad desea representar el número de estudiantes matriculados en cada una de sus facultades (Humanidades, Ingeniería, Medicina, Derecho, Economía y Arquitectura) para el ciclo académico 2024, permitiendo una fácil comparación entre facultades.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "escenario": "Un estudio sobre calificaciones finales en un curso de estadística muestra datos que podrían seguir una distribución normal. Los investigadores quieren representar las frecuencias de cada intervalo de calificación y, al mismo tiempo, identificar visualmente si la distribución se aproxima a una curva normal.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "escenario": "Un análisis de ventas mensuales de una cadena de tiendas durante un año completo. Se desea mostrar la evolución de las ventas a lo largo del tiempo, identificando tendencias, picos y caídas.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 4
+    },
+    {
+      "escenario": "Una empresa farmacéutica ha registrado el tiempo (en días) que tarda cada lote de medicamentos en pasar el control de calidad. Quieren determinar si un nuevo lote con un tiempo específico está dentro del 75% de los casos más rápidos.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 3
+    }
+  ],
+  "tercera_serie": [
+    {
+      "title": "La siguiente tabla muestra la distribución de salarios mensuales (en quetzales) de los trabajadores de la empresa Alfa Omega S.A:",
+      "ranges": [
+        "[2000-2500)",
+        "[2500-3000)",
+        "[3000-3500)",
+        "[3500-4000)",
+        "[4000-4500)",
+        "[4500-5000)",
+        "[5000-5500)",
+        "[5500-6000)"
+      ],
+      "workers": [
+        10,
+        9,
+        12,
+        16,
+        13,
+        11,
+        9,
+        6
+      ]
+    },
+    {
+      "title": "Construya la siguiente tabla de distribución de frecuencias. Con datos agrupados usando el método Sturgers.",
+      "data": [
+        "114",
+        "105",
+        "119",
+        "119",
+        "119",
+        "123",
+        "121",
+        "115",
+        "124",
+        "129",
+        "126",
+        "126",
+        "130",
+        "132",
+        "140",
+        "140",
+        "136",
+        "147",
+        "141",
+        "144",
+        "147",
+        "147",
+        "152",
+        "149",
+        "154"
+      ]
+    },
+    {
+      "title": "Con la información obtenida del tiempo de atención (en minutos) a clientes en una sucursal bancaria, se tomaron aleatoriamente los siguientes datos durante el mes de febrero.",
+      "data": [
+        "3.4",
+        "3.6",
+        "4.3",
+        "4.6",
+        "4.7",
+        "5.2",
+        "5.5",
+        "5.8",
+        "6.1",
+        "6.1",
+        "6.5",
+        "6.9",
+        "6.8",
+        "7.1",
+        "7.5",
+        "7.7",
+        "7.8",
+        "8.2",
+        "8.4",
+        "9.0",
+        "8.9",
+        "9.7",
+        "10.2",
+        "11.5"
+      ]
+    },
+    {
+      "title": "Calcular las medidas de tendencia central Media , Mediana, Moda e interprete los resultados obtenidos.",
+      "ranges": [
+        "[1500-2000)",
+        "[2000-2500)",
+        "[2500-3000)",
+        "[3000-3500)",
+        "[3500-4000)",
+        "[4000-4500)",
+        "[4500-5000)"
+      ],
+      "count": [
+        5,
+        14,
+        18,
+        23,
+        17,
+        6,
+        4
+      ]
+    }
+  ]
+}

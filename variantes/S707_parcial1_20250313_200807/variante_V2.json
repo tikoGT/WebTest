@@ -1,0 +1,281 @@
+{
+  "id": "V2",
+  "primera_serie": [
+    {
+      "pregunta": "Si los datos están distribuidos de forma simétrica alrededor de la media, entonces:",
+      "opciones": [
+        "La media y la mediana coinciden",
+        "La media es mayor que la mediana",
+        "La mediana es mayor que la media",
+        "La media y la moda coinciden"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "Trata del recuento, ordenación y clasificación de los datos obtenidos por las observaciones, para poder hacer comparaciones y obtener conclusiones.",
+      "opciones": [
+        "Población",
+        "Cálculos",
+        "Estadística",
+        "Frecuencia",
+        "Ninguna de las anteriores"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "pregunta": "Las Variables Estadísticas pueden ser:",
+      "opciones": [
+        "Discretas",
+        "Cualitativas",
+        "Indiscretas",
+        "Cuantitativas",
+        "Numéricas"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "Las Fases de un estudio estadístico son:",
+      "opciones": [
+        "Planteamiento del Problema",
+        "Simplificar los Datos",
+        "Recolectar y Ordenar los Datos",
+        "Analizar los Datos",
+        "Interpretar y Presentar Resultados",
+        "Ninguna de las anteriores"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "La diferencia entre una variable cuantitativa discreta y una variable cuantitativa continua es:",
+      "opciones": [
+        "Las variables discretas toman cualquier valor dentro de un intervalo, las continuas toman valores aislados",
+        "Las variables discretas toman valores aislados, las continuas toman cualquier valor dentro de un intervalo",
+        "Las variables discretas son siempre enteras, las continuas son siempre decimales",
+        "No hay diferencia real entre ambas"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "¿Qué medida indica el grado de dispersión de los datos respecto a la media?",
+      "opciones": [
+        "Varianza",
+        "Mediana",
+        "Moda",
+        "Coeficiente de asimetría"
+      ],
+      "respuesta_correcta": 0
+    },
+    {
+      "pregunta": "¿Cuál es el método que permite calcular el número de grupos, intervalos o clases a construer para una table de distribución de frecuencias?",
+      "opciones": [
+        "Método de mínimos cuadrados",
+        "Coeficiente de Gini",
+        "Método Sturgers",
+        "La regla empírica"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "pregunta": "Es el conjunto de todos los elementos a los que se somete a un estudio estadístico.",
+      "opciones": [
+        "Muestra",
+        "Población",
+        "Individuo",
+        "Muestreo"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "La toma de temperatura para ingresar a los centros comerciales es una variable:",
+      "opciones": [
+        "Cualitativa",
+        "Cuantitativa"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "pregunta": "¿Quién ordeno o realizo el primer catastro o Censo de (bienes inmuebles) considerado el primero en Europa?",
+      "opciones": [
+        "El Rey Juan Carlos",
+        "El Rey Guillermo",
+        "El Rey Constantino",
+        "El Rey Ricardo",
+        "El Rey Federico de Edimburgo"
+      ],
+      "respuesta_correcta": 1
+    }
+  ],
+  "segunda_serie": [
+    {
+      "escenario": "Un instituto de estadísticas demográficas ha recopilado información sobre las edades de los habitantes de un municipio, agrupando los datos en intervalos de 10 años (0-9, 10-19, 20-29, etc.). Desean visualizar tanto la frecuencia de cada intervalo como la tendencia general de la distribución de edades.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 4
+    },
+    {
+      "escenario": "Una compañía de telecomunicaciones quiere representar visualmente la distribución porcentual de sus ingresos por tipo de servicio (internet, telefonía fija, telefonía móvil, televisión por cable y servicios corporativos) durante el año fiscal 2023.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 1
+    },
+    {
+      "escenario": "Un análisis de ventas mensuales de una cadena de tiendas durante un año completo. Se desea mostrar la evolución de las ventas a lo largo del tiempo, identificando tendencias, picos y caídas.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 4
+    },
+    {
+      "escenario": "Un estudio sobre calificaciones finales en un curso de estadística muestra datos que podrían seguir una distribución normal. Los investigadores quieren representar las frecuencias de cada intervalo de calificación y, al mismo tiempo, identificar visualmente si la distribución se aproxima a una curva normal.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 2
+    },
+    {
+      "escenario": "Una empresa farmacéutica ha registrado el tiempo (en días) que tarda cada lote de medicamentos en pasar el control de calidad. Quieren determinar si un nuevo lote con un tiempo específico está dentro del 75% de los casos más rápidos.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 3
+    },
+    {
+      "escenario": "Un departamento de recursos humanos ha realizado una encuesta sobre los tiempos de transporte (en minutos) que los empleados tardan en llegar a la oficina. Los datos obtenidos son continuos y quieren mostrar cómo se distribuyen estos tiempos, identificando claramente dónde se concentra la mayoría de los casos.",
+      "opciones": [
+        "Gráfica de barras",
+        "Gráfica circular (pastel)",
+        "Histograma de Pearson",
+        "Ojiva de Galton",
+        "Polígono de frecuencias"
+      ],
+      "respuesta_correcta": 2
+    }
+  ],
+  "tercera_serie": [
+    {
+      "title": "La siguiente tabla muestra la distribución de salarios mensuales (en quetzales) de los trabajadores de la empresa Alfa Omega S.A:",
+      "ranges": [
+        "[2000-2500)",
+        "[2500-3000)",
+        "[3000-3500)",
+        "[3500-4000)",
+        "[4000-4500)",
+        "[4500-5000)",
+        "[5000-5500)",
+        "[5500-6000)"
+      ],
+      "workers": [
+        7,
+        9,
+        13,
+        16,
+        10,
+        12,
+        10,
+        3
+      ]
+    },
+    {
+      "title": "Construya la siguiente tabla de distribución de frecuencias. Con datos agrupados usando el método Sturgers.",
+      "data": [
+        "97",
+        "98",
+        "99",
+        "104",
+        "104",
+        "110",
+        "107",
+        "110",
+        "114",
+        "117",
+        "123",
+        "125",
+        "124",
+        "125",
+        "130",
+        "135",
+        "134",
+        "139",
+        "143",
+        "140",
+        "144",
+        "149",
+        "148",
+        "155",
+        "158"
+      ]
+    },
+    {
+      "title": "Con la información obtenida de las ventas mensuales de distintos productos tecnológicos, se tomaron aleatoriamente los siguientes datos que representan el crecimiento porcentual respecto al año anterior.",
+      "data": [
+        "2.2",
+        "2.9",
+        "2.8",
+        "3.2",
+        "3.0",
+        "3.3",
+        "3.9",
+        "3.3",
+        "3.9",
+        "4.3",
+        "4.6",
+        "4.6",
+        "5.1",
+        "4.9",
+        "5.0",
+        "5.6",
+        "6.1",
+        "6.3",
+        "6.3",
+        "7.2",
+        "7.3",
+        "8.1",
+        "9.1",
+        "10.4"
+      ]
+    },
+    {
+      "title": "Calcular las medidas de tendencia central Media , Mediana, Moda e interprete los resultados obtenidos.",
+      "ranges": [
+        "[2500-3000)",
+        "[3000-3500)",
+        "[3500-4000)",
+        "[4000-4500)",
+        "[4500-5000)",
+        "[5000-5500)",
+        "[5500-6000)"
+      ],
+      "count": [
+        9,
+        13,
+        21,
+        19,
+        12,
+        5,
+        4
+      ]
+    }
+  ]
+}
