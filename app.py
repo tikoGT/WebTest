@@ -365,52 +365,122 @@ def descargar_archivo(tipo, filename):
 # Reemplaza esta función en app_completa.py
 @app.route('/descargar_todo/<id_examen>')
 def descargar_todo(id_examen):
-    memory_file = BytesIO()
-    
-    # Buscar en el historial para obtener el nombre del archivo de solución matemática
-    historial = cargar_historial()
-    solucion_matematica_filename = None
-    
-    for item in historial:
-        if item.get('id') == id_examen:
-            solucion_matematica_filename = item.get('solucion_matematica')
-            break
-    
-    with zipfile.ZipFile(memory_file, 'w') as zf:
-        # Variantes
-        if os.path.exists(os.path.join(VARIANTES_FOLDER, f'variante_{id_examen}.json')):
-            zf.write(os.path.join(VARIANTES_FOLDER, f'variante_{id_examen}.json'), 
-                     arcname=f'variante_{id_examen}.json')
+    """
+    Función mejorada para descargar todos los archivos relacionados con una variante.
+    Busca en múltiples ubicaciones para asegurar encontrar todos los archivos.
+    """
+    try:
+        memory_file = BytesIO()
         
-        # Exámenes
-        if os.path.exists(os.path.join(EXAMENES_FOLDER, f'Examen_{id_examen}.docx')):
-            zf.write(os.path.join(EXAMENES_FOLDER, f'Examen_{id_examen}.docx'), 
-                     arcname=f'Examen_{id_examen}.docx')
+        # Buscar en el historial para obtener información sobre la variante
+        historial = cargar_historial()
+        solucion_matematica_filename = None
+        seccion = "A"
+        tipo_evaluacion = "parcial1"
+        directorio = None
         
-        # Hojas de respuesta
-        if os.path.exists(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{id_examen}.pdf')):
-            zf.write(os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{id_examen}.pdf'), 
-                     arcname=f'HojaRespuestas_{id_examen}.pdf')
+        for item in historial:
+            if item.get('id') == id_examen:
+                solucion_matematica_filename = item.get('solucion_matematica')
+                seccion = item.get('seccion', 'A')
+                tipo_evaluacion = item.get('tipo_evaluacion', 'parcial1')
+                directorio = item.get('directorio')
+                break
         
-        # Plantillas de calificación
-        if os.path.exists(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{id_examen}.pdf')):
-            zf.write(os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{id_examen}.pdf'), 
-                     arcname=f'Plantilla_{id_examen}.pdf')
+        # Lista para almacenar todos los archivos que se añadirán al ZIP
+        archivos_zip = []
         
-        # Solución matemática detallada
-        if solucion_matematica_filename and os.path.exists(os.path.join(PLANTILLAS_FOLDER, solucion_matematica_filename)):
-            zf.write(os.path.join(PLANTILLAS_FOLDER, solucion_matematica_filename), 
-                     arcname=solucion_matematica_filename)
+        # Función para buscar un archivo en múltiples ubicaciones
+        def buscar_archivo(nombre_base, carpeta, extensiones=None):
+            if extensiones is None:
+                extensiones = ['']
+            
+            posibles_rutas = []
+            
+            # Generar posibles rutas de archivo
+            for extension in extensiones:
+                # Nombre simple
+                posibles_rutas.append(os.path.join(carpeta, f"{nombre_base}{extension}"))
+                
+                # Con sección y tipo de evaluación
+                posibles_rutas.append(os.path.join(carpeta, f"{nombre_base}_{seccion}_{tipo_evaluacion}{extension}"))
+                
+                # En directorio específico si existe
+                if directorio:
+                    posibles_rutas.append(os.path.join(carpeta, directorio, f"{nombre_base}{extension}"))
+                    posibles_rutas.append(os.path.join(carpeta, directorio, f"{nombre_base}_{seccion}_{tipo_evaluacion}{extension}"))
+            
+            # Buscar el archivo en todas las rutas posibles
+            for ruta in posibles_rutas:
+                if os.path.exists(ruta):
+                    return ruta
+            
+            return None
+        
+        # 1. Buscar variante y respuestas
+        variante_path = buscar_archivo(f'variante_{id_examen}', VARIANTES_FOLDER, ['.json'])
+        respuestas_path = buscar_archivo(f'respuestas_{id_examen}', VARIANTES_FOLDER, ['.json'])
+        
+        if variante_path:
+            archivos_zip.append((variante_path, f'variante_{id_examen}.json'))
+        if respuestas_path:
+            archivos_zip.append((respuestas_path, f'respuestas_{id_examen}.json'))
+        
+        # 2. Buscar examen
+        examen_path = buscar_archivo(f'Examen_{id_examen}', EXAMENES_FOLDER, ['.docx'])
+        if examen_path:
+            archivos_zip.append((examen_path, f'Examen_{id_examen}.docx'))
+        
+        # 3. Buscar hoja de respuestas
+        hoja_path = buscar_archivo(f'HojaRespuestas_{id_examen}', HOJAS_RESPUESTA_FOLDER, ['.pdf'])
+        if hoja_path:
+            archivos_zip.append((hoja_path, f'HojaRespuestas_{id_examen}.pdf'))
+        
+        # 4. Buscar plantilla de calificación
+        plantilla_path = buscar_archivo(f'Plantilla_{id_examen}', PLANTILLAS_FOLDER, ['.pdf'])
+        if plantilla_path:
+            archivos_zip.append((plantilla_path, f'Plantilla_{id_examen}.pdf'))
+        
+        # 5. Buscar solución matemática
+        if solucion_matematica_filename:
+            # Intentar con el nombre exacto del historial
+            solucion_path = buscar_archivo(solucion_matematica_filename.replace('.docx', ''), PLANTILLAS_FOLDER, ['.docx'])
+            if solucion_path:
+                archivos_zip.append((solucion_path, solucion_matematica_filename))
+        
+        # Intentar con nombres alternativos si no se encontró la solución
+        if not solucion_matematica_filename or not os.path.exists(os.path.join(PLANTILLAS_FOLDER, solucion_matematica_filename)):
+            for nombre_base in [f'Solucion_Matematica_{id_examen}', f'Solucion_Matematica_Detallada_{id_examen}']:
+                solucion_path = buscar_archivo(nombre_base, PLANTILLAS_FOLDER, ['.docx'])
+                if solucion_path:
+                    archivos_zip.append((solucion_path, os.path.basename(solucion_path)))
+                    break
+        
+        # Si no se encontraron archivos, intentar generarlos
+        if not archivos_zip:
+            raise FileNotFoundError(f"No se encontraron archivos para la variante {id_examen}")
+        
+        # Crear archivo ZIP
+        with zipfile.ZipFile(memory_file, 'w') as zf:
+            for ruta_completa, nombre_archivo in archivos_zip:
+                zf.write(ruta_completa, arcname=nombre_archivo)
+                print(f"Añadido al ZIP: {nombre_archivo} desde {ruta_completa}")
+        
+        memory_file.seek(0)
+        
+        # Guardar el archivo ZIP temporalmente
+        zip_path = os.path.join(UPLOAD_FOLDER, f'examen_completo_{id_examen}.zip')
+        with open(zip_path, 'wb') as f:
+            f.write(memory_file.getvalue())
+        
+        return send_from_directory(UPLOAD_FOLDER, f'examen_completo_{id_examen}.zip', as_attachment=True)
     
-    memory_file.seek(0)
-    
-    # Guardar el archivo ZIP temporalmente
-    zip_path = os.path.join(UPLOAD_FOLDER, f'examen_completo_{id_examen}.zip')
-    with open(zip_path, 'wb') as f:
-        f.write(memory_file.getvalue())
-    
-    return send_from_directory(UPLOAD_FOLDER, f'examen_completo_{id_examen}.zip', as_attachment=True)
-
+    except Exception as e:
+        flash(f'Error al descargar los archivos: {str(e)}', 'danger')
+        print(f"Error en descargar_todo: {str(e)}")
+        traceback.print_exc()
+        return redirect(url_for('index'))
+        
 def diagnosticar_generacion_examen():
     """
     Función de diagnóstico que verifica las dependencias y directorios necesarios
@@ -3149,9 +3219,10 @@ def crear_solucion_matematica_simplificada(variante_id, seccion="A", tipo_evalua
 def index():
     """
     Función principal que muestra la página de inicio con las variantes disponibles
+    Versión corregida para mostrar correctamente los archivos generados.
     """
-    # Cargar el historial para referencia
     try:
+        # Cargar el historial para referencia
         historial_raw = cargar_historial()
         
         # Crear una función para sanitizar el diccionario y prevenir recursión
@@ -3197,39 +3268,53 @@ def index():
             if variante_id in variantes_procesadas:
                 continue
             
-            # CORRECCIÓN: Mejorar la verificación de existencia de archivos
             # Asegurarse de buscar en directorios específicos si existen
             directorio = item.get('directorio')
             
-            # Verificar si existen los archivos
+            # Verificar si existen los archivos - VERSIÓN MEJORADA Y CORREGIDA
             tiene_examen = False
             tiene_hoja = False
             tiene_plantilla = False
             tiene_solucion = False
             solucion_matematica = item.get('solucion_matematica')
             
-            # Rutas de archivo estándar (sin directorio)
+            # CORRECCIÓN: Rutas de archivo estándar (sin directorio)
             examen_path = os.path.join(EXAMENES_FOLDER, f'Examen_{variante_id}.docx')
             hoja_path = os.path.join(HOJAS_RESPUESTA_FOLDER, f'HojaRespuestas_{variante_id}.pdf')
             plantilla_path = os.path.join(PLANTILLAS_FOLDER, f'Plantilla_{variante_id}.pdf')
             
-            # Verificar en ruta estándar primero
-            tiene_examen = os.path.exists(examen_path)
-            tiene_hoja = os.path.exists(hoja_path)
-            tiene_plantilla = os.path.exists(plantilla_path)
-            
-            # Si hay un directorio específico, también verificar allí
+            # CORRECCIÓN: Verificar archivos más recientes primero
             if directorio:
                 examen_dir_path = os.path.join(EXAMENES_FOLDER, directorio, f'Examen_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.docx')
-                hoja_dir_path = os.path.join(HOJAS_RESPUESTA_FOLDER, directorio, f'HojaRespuestas_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.pdf')
-                plantilla_dir_path = os.path.join(PLANTILLAS_FOLDER, directorio, f'Plantilla_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.pdf')
+                examen_simple_dir_path = os.path.join(EXAMENES_FOLDER, directorio, f'Examen_{variante_id}.docx')
                 
-                # Actualizar estado si se encuentra en directorio específico
-                tiene_examen = tiene_examen or os.path.exists(examen_dir_path)
-                tiene_hoja = tiene_hoja or os.path.exists(hoja_dir_path)
-                tiene_plantilla = tiene_plantilla or os.path.exists(plantilla_dir_path)
+                hoja_dir_path = os.path.join(HOJAS_RESPUESTA_FOLDER, directorio, f'HojaRespuestas_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.pdf')
+                hoja_simple_dir_path = os.path.join(HOJAS_RESPUESTA_FOLDER, directorio, f'HojaRespuestas_{variante_id}.pdf')
+                
+                plantilla_dir_path = os.path.join(PLANTILLAS_FOLDER, directorio, f'Plantilla_{item.get("seccion")}_{item.get("tipo_evaluacion")}_{variante_id}.pdf')
+                plantilla_simple_dir_path = os.path.join(PLANTILLAS_FOLDER, directorio, f'Plantilla_{variante_id}.pdf')
+                
+                # Verificar examen
+                tiene_examen = (os.path.exists(examen_dir_path) or 
+                               os.path.exists(examen_simple_dir_path) or 
+                               os.path.exists(examen_path))
+                
+                # Verificar hoja de respuestas
+                tiene_hoja = (os.path.exists(hoja_dir_path) or 
+                             os.path.exists(hoja_simple_dir_path) or 
+                             os.path.exists(hoja_path))
+                
+                # Verificar plantilla
+                tiene_plantilla = (os.path.exists(plantilla_dir_path) or 
+                                  os.path.exists(plantilla_simple_dir_path) or 
+                                  os.path.exists(plantilla_path))
+            else:
+                # Verificar en ruta estándar
+                tiene_examen = os.path.exists(examen_path)
+                tiene_hoja = os.path.exists(hoja_path)
+                tiene_plantilla = os.path.exists(plantilla_path)
             
-            # Verificar la solución matemática
+            # CORRECCIÓN: Verificar todos los posibles nombres de la solución matemática
             if solucion_matematica:
                 sol_path = os.path.join(PLANTILLAS_FOLDER, solucion_matematica)
                 tiene_solucion = os.path.exists(sol_path)
@@ -3238,6 +3323,71 @@ def index():
                 if directorio and not tiene_solucion:
                     sol_dir_path = os.path.join(PLANTILLAS_FOLDER, directorio, solucion_matematica)
                     tiene_solucion = os.path.exists(sol_dir_path)
+                
+                # Verificar nombres alternativos
+                if not tiene_solucion:
+                    alternativas = [
+                        os.path.join(PLANTILLAS_FOLDER, f'Solucion_Matematica_{variante_id}.docx'),
+                        os.path.join(PLANTILLAS_FOLDER, f'Solucion_Matematica_Detallada_{variante_id}.docx'),
+                        os.path.join(PLANTILLAS_FOLDER, directorio, f'Solucion_Matematica_{variante_id}.docx') if directorio else None,
+                        os.path.join(PLANTILLAS_FOLDER, directorio, f'Solucion_Matematica_Detallada_{variante_id}.docx') if directorio else None,
+                    ]
+                    
+                    for alt_path in alternativas:
+                        if alt_path and os.path.exists(alt_path):
+                            solucion_matematica = os.path.basename(alt_path)
+                            tiene_solucion = True
+                            break
+            else:
+                # Intentar buscar archivos de solución con nombres estándar
+                sol_paths = [
+                    os.path.join(PLANTILLAS_FOLDER, f'Solucion_Matematica_{variante_id}.docx'),
+                    os.path.join(PLANTILLAS_FOLDER, f'Solucion_Matematica_Detallada_{variante_id}.docx'),
+                ]
+                
+                for sol_path in sol_paths:
+                    if os.path.exists(sol_path):
+                        solucion_matematica = os.path.basename(sol_path)
+                        tiene_solucion = True
+                        break
+            
+            # CORRECCIÓN: En caso de no encontrar algún archivo, intentar generarlo nuevamente
+            if not tiene_examen or not tiene_hoja or not tiene_plantilla or not tiene_solucion:
+                print(f"Verificando archivos faltantes para variante {variante_id}...")
+                
+                # Intentar encontrar variante y respuestas
+                variante_path = os.path.join(VARIANTES_FOLDER, f'variante_{variante_id}.json')
+                respuestas_path = os.path.join(VARIANTES_FOLDER, f'respuestas_{variante_id}.json')
+                
+                if os.path.exists(variante_path) and os.path.exists(respuestas_path):
+                    seccion = item.get('seccion', 'A')
+                    tipo_evaluacion = item.get('tipo_evaluacion', 'parcial1')
+                    
+                    # Intentar regenerar solo los archivos faltantes
+                    if not tiene_examen:
+                        print(f"Intentando regenerar examen para {variante_id}...")
+                        examen_filename = crear_examen_word(variante_id, seccion, tipo_evaluacion)
+                        if examen_filename:
+                            tiene_examen = True
+                    
+                    if not tiene_hoja:
+                        print(f"Intentando regenerar hoja de respuestas para {variante_id}...")
+                        hoja_filename = crear_hoja_respuestas(variante_id, seccion, tipo_evaluacion)
+                        if hoja_filename:
+                            tiene_hoja = True
+                    
+                    if not tiene_plantilla:
+                        print(f"Intentando regenerar plantilla para {variante_id}...")
+                        plantilla_filename = crear_plantilla_calificacion(variante_id, seccion, tipo_evaluacion)
+                        if plantilla_filename:
+                            tiene_plantilla = True
+                    
+                    if not tiene_solucion:
+                        print(f"Intentando regenerar solución matemática para {variante_id}...")
+                        solucion_filename = crear_solucion_matematica_simplificada(variante_id, seccion, tipo_evaluacion)
+                        if solucion_filename:
+                            solucion_matematica = solucion_filename
+                            tiene_solucion = True
             
             # Añadir la variante a la lista
             variantes.append({
@@ -3258,7 +3408,7 @@ def index():
             if len(variantes) >= 10:
                 break
         
-        # Sanitizar las variantes para evitar cualquier recursión
+        # CORRECCIÓN: Sanitizar las variantes para evitar cualquier recursión
         variantes_safe = []
         for v in variantes:
             variantes_safe.append(sanitize_dict(v))
@@ -3267,6 +3417,7 @@ def index():
     
     except Exception as e:
         app.logger.error(f"Error en index: {str(e)}")
+        traceback.print_exc()
         
         # Devolver una página sencilla con el error
         error_html = f"""
